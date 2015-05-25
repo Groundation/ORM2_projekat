@@ -10,7 +10,11 @@ void main(void)
 	char n = 0;
 	 */
 	izlaz = 0;
+<<<<<<< HEAD
 	ulaz = 0xff;
+=======
+        ulaz = 0xFF;
+>>>>>>> origin/master
 	while(1)
 	{
 /*	  mask = 1 << n;		    
