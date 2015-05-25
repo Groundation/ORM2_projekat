@@ -2,7 +2,7 @@
 
 #define ulaz P0
 #define izlaz P2
-
+/*JEL RADI??????????*/
 void main(void)
 {
     /*char mask = 0x01;		                      //maska za proveravanje ulaznih portova
