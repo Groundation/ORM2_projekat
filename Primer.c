@@ -10,7 +10,7 @@ void main(void)
 	char n = 0;
 	 */
 	izlaz = 0;
-
+	ulaz = 0xff;
 	while(1)
 	{
 /*	  mask = 1 << n;		    
