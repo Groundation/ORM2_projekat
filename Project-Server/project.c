@@ -11,6 +11,8 @@
 #endif
 
 #include "pcap.h"
+#include "pthreadVC2\pthread.h"
+#include "pthreadVC2\semaphore.h"
 
 #define DATA_SIZE 8
 #define ETH_LEN 14
