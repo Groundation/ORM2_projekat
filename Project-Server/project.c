@@ -16,6 +16,7 @@
 #define ETH_LEN 14
 #define IP_LEN 20
 #define UDP_LEN 8
+#define TOT_LEN ETH_LEN + IP_LEN + UDP_LEN
 
 /* 4 bytes IP address */
 typedef struct ip_address
@@ -67,7 +68,14 @@ typedef struct pkt_data
 }pkt_data;
 
 /* prototype of the packet handler */
-void packet_handler(u_char *param, const struct pcap_pkthdr *header, const u_char *pkt);
+void PacketHandler(u_char *param, const struct pcap_pkthdr *header, const u_char *pkt);
+/* prototype of the buffering thread */
+void* Buffering(void* param);
+/* prototype of writing file thread */
+void* Writing(void* param);
+
+static sem_t pkt_arrived;
+static pthread_t thr;
 
 int main()
 {
@@ -80,6 +88,9 @@ int main()
 	u_int netmask;
 	char packet_filter[] = "ip and udp port 50030";
 	struct bpf_program fcode;
+	
+	sem_init(&pkt_arrived, 0, 0); 
+	pthread_create(&thr, NULL, Buffering, NULL);
 	
 	/* Retrieve the device list */
 	if(pcap_findalldevs(&alldevs, errbuf) == -1)
@@ -176,54 +187,67 @@ int main()
 	pcap_freealldevs(alldevs);
 	
 	/* start the capture */
-	pcap_loop(adhandle, 0, packet_handler, NULL);
+	pcap_loop(adhandle, 0, PacketHandler, NULL);
 	
 	return 0;
 }
 
-/* Callback function invoked by libpcap for every incoming packet */
-void packet_handler(u_char *param, const struct pcap_pkthdr *header, const u_char *pkt)
+void* Buffering(void* param)
 {
-	struct tm *ltime;
-	char timestr[16];
+	while(1)
+	{
+		sem_wait(&pkt_arrived);
+		printf("dobio paket\n");
+	}
+}
+
+void* Writing(void* param)
+{
+	return NULL;
+}
+
+/* Callback function invoked by libpcap for every incoming packet */
+void PacketHandler(u_char *param, const struct pcap_pkthdr *header, const u_char *pkt)
+{
 	ip_header *ih;
 	udp_header *uh;
 	eth_header *eh;
 	pkt_data *pd;
-	u_int ip_len;
 	u_short sport,dport;
-	time_t local_tv_sec;
+	FILE* fd = NULL;
 
 	/*
 	 * unused parameter
 	 */
 	(VOID)(param);
-
-	/* convert the timestamp to readable format */
-	local_tv_sec = header->ts.tv_sec;
-	ltime=localtime(&local_tv_sec);
-	strftime( timestr, sizeof timestr, "%H:%M:%S", ltime);
-
-	/* print timestamp and length of the packet */
-	printf("%s.%.6d len:%d ", timestr, header->ts.tv_usec, header->len);
+	
+	/* notify buffering thread that packet arrived */
+	sem_post(&pkt_arrived);
+	
+	/* open file for writing in addition mode */
+	fd = fopen("test.bin", "a");
 
 	/* retrieve the position of the ETH header */
 	eh = (eth_header *) pkt;
 
 	/* retireve the position of the IP header */
-	ih = (ip_header *) (pkt +
-		ETH_LEN); //length of ethernet header
+	ih = (ip_header *) (pkt + ETH_LEN); //length of ethernet header
 
 	/* retireve the position of the UDP header */
-	//ip_len = (ih->ver_ihl & 0xf) * 4;
 	uh = (udp_header *) ((u_char*)ih + IP_LEN);
 
 	/* retrieve the position of the packet data */
 	pd = (pkt_data *) ((u_char*)uh + UDP_LEN);
+	
+	/* write to file data from pkt_data structure */
+	fwrite(pd->data, 1, DATA_SIZE, fd);
+	
+	/* close file */
+	fclose(fd);
 
 	/* convert from network byte order to host byte order */
-	sport = ntohs( uh->sport );
-	dport = ntohs( uh->dport );
+	sport = ntohs(uh->sport);
+	dport = ntohs(uh->dport);
 
 	/* print ip addresses and udp ports */
 	printf("\nIP adresses: %d.%d.%d.%d.%d -> %d.%d.%d.%d.%d\n",
