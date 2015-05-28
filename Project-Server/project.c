@@ -10,90 +10,36 @@
 #define _CRT_SECURE_NO_WARNINGS
 #endif
 
-#include "pcap.h"
+#include "orm_types.h"
 #include "pthreadVC2\pthread.h"
 #include "pthreadVC2\semaphore.h"
-
-#define DATA_SIZE 8
-#define ETH_LEN 14
-#define IP_LEN 20
-#define UDP_LEN 8
-#define TOT_LEN ETH_LEN + IP_LEN + UDP_LEN
-
-/* 4 bytes IP address */
-typedef struct ip_address
-{
-	u_char byte1;
-	u_char byte2;
-	u_char byte3;
-	u_char byte4;
-}ip_address;
-
-/* IPv4 header */
-typedef struct ip_header
-{
-	u_char	ver_ihl;		// Version (4 bits) + Internet header length (4 bits)
-	u_char	tos;			// Type of service 
-	u_short tlen;			// Total length 
-	u_short identification; // Identification
-	u_short flags_fo;		// Flags (3 bits) + Fragment offset (13 bits)
-	u_char	ttl;			// Time to live
-	u_char	proto;			// Protocol
-	u_short crc;			// Header checksum
-	ip_address	saddr;		// Source address
-	ip_address	daddr;		// Destination address
-}ip_header;
-
-/* UDP header */
-typedef struct udp_header
-{
-	u_short sport;			// Source port
-	u_short dport;			// Destination port
-	u_short len;			// Datagram length
-	u_short crc;			// Checksum
-}udp_header;
-
-/* ETH header */
-typedef struct eth_header
-{
-	u_char eth_dhost[6];		//Destination host address
-	u_char eth_shost[6];		//Source host address
-	u_char eth_type[2];			//IP? ARP? RARP? etc
-}eth_header;
-
-/* PKT data */
-typedef struct pkt_data
-{
-	u_int seq_num;
-	u_int ack;
-	u_char data[DATA_SIZE];
-}pkt_data;
-
-/* prototype of the packet handler */
-void PacketHandler(u_char *param, const struct pcap_pkthdr *header, const u_char *pkt);
-/* prototype of the buffering thread */
-void* Buffering(void* param);
-/* prototype of writing file thread */
-void* Writing(void* param);
-
-static sem_t pkt_arrived;
-static pthread_t thr;
+#include "global.h"
+#include "proto.h"
+#include "fun.c"
 
 int main()
 {
 	pcap_if_t *alldevs;
 	pcap_if_t *d;
-	int inum;
+	int inum, res;
 	int i=0;
 	pcap_t *adhandle;
 	char errbuf[PCAP_ERRBUF_SIZE];
 	u_int netmask;
 	char packet_filter[] = "ip and udp port 50030";
 	struct bpf_program fcode;
+	struct pcap_pkthdr *header;
+	u_char *pkt;
 	
-	sem_init(&pkt_arrived, 0, 0); 
-	pthread_create(&thr, NULL, Buffering, NULL);
+	last_pkt = FALSE;
+
+	/* init semaphore */
+	sem_init(&pkt_arrived, 0, 0);
+	/* create thread Buffering*/
+	pthread_create(&buf_thr, NULL, Writing, NULL);
+	/* TODO: init sliding window */
 	
+
 	/* Retrieve the device list */
 	if(pcap_findalldevs(&alldevs, errbuf) == -1)
 	{
@@ -134,7 +80,7 @@ int main()
 	for(d=alldevs, i=0; i< inum-1 ;d=d->next, i++);
 	
 	/* Open the adapter */
-	if ((adhandle= pcap_open_live(d->name,	// name of the device
+	if ((adhandle = pcap_open_live(d->name,	// name of the device
 							 65536,			// portion of the packet to capture. 
 											// 65536 grants that the whole packet will be captured on all the MACs.
 							 1,				// promiscuous mode (nonzero means promiscuous)
@@ -187,113 +133,28 @@ int main()
 	
 	/* At this point, we don't need any more the device list. Free it */
 	pcap_freealldevs(alldevs);
-	
-	/* start the capture */
-	pcap_loop(adhandle, 0, PacketHandler, NULL);
-	
-	return 0;
-}
 
-void* Buffering(void* param)
-{
-	while(1)
-	{
-		sem_wait(&pkt_arrived);
-		printf("dobio paket\n");
-	}
-}
-
-void* Writing(void* param)
-{
-	return NULL;
-}
-
-/* Callback function invoked by libpcap for every incoming packet */
-void PacketHandler(u_char *param, const struct pcap_pkthdr *header, const u_char *pkt)
-{
-	ip_header *ih;
-	udp_header *uh;
-	eth_header *eh;
-	pkt_data *pd;
-	u_short sport,dport;
-	FILE* fd = NULL;
-
-	/*
-	 * unused parameter
-	 */
-	(VOID)(param);
-	
-	/* notify buffering thread that packet arrived */
-	sem_post(&pkt_arrived);
-	
 	/* open file for writing in addition mode */
-	fd = fopen("test.bin", "a");
-
-	/* retrieve the position of the ETH header */
-	eh = (eth_header *) pkt;
-
-	/* retireve the position of the IP header */
-	ih = (ip_header *) (pkt + ETH_LEN); //length of ethernet header
-
-	/* retireve the position of the UDP header */
-	uh = (udp_header *) ((u_char*)ih + IP_LEN);
-
-	/* retrieve the position of the packet data */
-	pd = (pkt_data *) ((u_char*)uh + UDP_LEN);
+	fd = fopen("test.bin", "wb");
 	
-	/* write to file data from pkt_data structure */
-	fwrite(pd->data, 1, DATA_SIZE, fd);
-	
+	/* Retrieve the packets */
+    while((res = pcap_next_ex(adhandle, &header, &pkt)) >= 0){
+        
+        if(res == 0)
+            /* Timeout elapsed */
+            continue;
+
+		//sem_post(&pkt_arrived);
+		
+		PacketHandler(pkt, fd);
+		if(last_pkt)
+			break;
+    }
+
 	/* close file */
 	fclose(fd);
+	/*destroy semaphore */
+	sem_destroy(&pkt_arrived);
 
-	/* convert from network byte order to host byte order */
-	sport = ntohs(uh->sport);
-	dport = ntohs(uh->dport);
-
-	/* print ip addresses and udp ports */
-	printf("\nIP adresses: %d.%d.%d.%d.%d -> %d.%d.%d.%d.%d\n",
-		ih->saddr.byte1,
-		ih->saddr.byte2,
-		ih->saddr.byte3,
-		ih->saddr.byte4,
-		sport,
-		ih->daddr.byte1,
-		ih->daddr.byte2,
-		ih->daddr.byte3,
-		ih->daddr.byte4,
-		dport);
-
-	printf("\nPacket data:\nACK: %d\nSequence_number: %d\nClear data: %s\n\n",
-		pd->ack,
-		pd->seq_num,
-		pd->data);
-
-	/*printf("\nVer_ihl: %x\nTos: %d\nTlen: %d\nId: %d\nFlags_fo: %d\nTTL: %d\nProto: %d\nCRC: %d\nOp_pad: %x\n\n",
-		ih->ver_ihl,
-		ih->tos,
-		htons(ih->tlen),
-		ih->identification,
-		ih->flags_fo,
-		ih->ttl,
-		ih->proto,
-		ih->crc,
-		ih->op_pad);
-
-	eh = (eth_header *) pkt_data;
-	printf("MAC adresses: %x-%x-%x-%x-%x-%x -> %x-%x-%x-%x-%x, %x\n",
-		eh->eth_shost[0],
-		eh->eth_shost[1],
-		eh->eth_shost[2],
-		eh->eth_shost[3],
-		eh->eth_shost[4],
-		eh->eth_shost[5],
-		eh->eth_dhost[0],
-		eh->eth_dhost[1],
-		eh->eth_dhost[2],
-		eh->eth_dhost[3],
-		eh->eth_dhost[4],
-		eh->eth_dhost[5],
-		eh->eth_type
-		);*/
+	return 0;
 }
