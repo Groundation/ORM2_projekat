@@ -1,11 +1,17 @@
 #include <pcap.h>
 
 #define DATA_SIZE 4
+/*#define
+#define
+#define
+#define*/
+#define TOTAL_LENGTH sizeof(eth_header)+sizeof(udp_header)+sizeof(ip_header)+sizeof(pkt_data)
+
 
 /* Packet header and data */
 typedef struct pkt_data
 {
-	u_int seq;
+	int seq;
 	u_int ack;
 	char data[DATA_SIZE];
 }pkt_data;

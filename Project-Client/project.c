@@ -14,9 +14,9 @@
 #include <pthread.h>
 #include "orm_types.h"
 
-int packet_size = sizeof(eth_header) + sizeof(udp_header)+sizeof(ip_header)+sizeof(pkt_data); 
+//int packet_size = sizeof(eth_header) + sizeof(udp_header)+sizeof(ip_header)+sizeof(pkt_data); 
 
-void PreparePacket(u_char *packet, char *data)
+void PreparePacket(u_char *packet, char *data, int seq, int bytes)
 {
 	eth_header* eh;
 	ip_header* ih;
@@ -25,37 +25,37 @@ void PreparePacket(u_char *packet, char *data)
 
 	/*Ethernet header*/
 	eh = (eth_header*) packet;
-	eh->source[0] = 0x00;
-	eh->source[1] = 0x19;
-	eh->source[2] = 0x99;
-	eh->source[3] = 0xd2;
-	eh->source[4] = 0xb3;
-	eh->source[5] = 0x8f;
-	eh->dest[0] = 0x00;
-	eh->dest[1] = 0x19;
-	eh->dest[2] = 0x99;
-	eh->dest[3] = 0xd3;
-	eh->dest[4] = 0x94;
-	eh->dest[5] = 0xa0;
+	eh->source[0] = 0xa0;
+	eh->source[1] = 0x48;
+	eh->source[2] = 0x1c;
+	eh->source[3] = 0x8a;
+	eh->source[4] = 0x1e;
+	eh->source[5] = 0xee;
+	eh->dest[0] = 0xa0;
+	eh->dest[1] = 0x48;
+	eh->dest[2] = 0x1c;
+	eh->dest[3] = 0x8c;
+	eh->dest[4] = 0x1e;
+	eh->dest[5] = 0x96;
 	eh->eth_type[0] = 0x08;
 	eh->eth_type[1] = 0x00;
 	/*IP header*/
 	ih = (ip_header *) (packet + sizeof(eth_header));
 	ih->ver_ihl = 0x45;									// Version (4 bits) + Internet header length (4 bits)
 	ih->tos = 0;										// Type of service 
-	ih->tlen = htons(packet_size - sizeof(eth_header));	// Total length
+	ih->tlen = htons(TOTAL_LENGTH - sizeof(eth_header));	// Total length
 	ih->flags_fo = 0;									// Flags (3 bits) + Fragment offset (13 bits)
 	ih->ttl = 128;										// Time to live
 	ih->proto = 17;										// Protocol
 
 	ih->saddr.byte1 = 192;
 	ih->saddr.byte2 = 168;
-	ih->saddr.byte3 = 32;
-	ih->saddr.byte4 = 64;
+	ih->saddr.byte3 = 30;
+	ih->saddr.byte4 = 55;
 	ih->daddr.byte1 = 192;
 	ih->daddr.byte2 = 168;
-	ih->daddr.byte3 = 32;
-	ih->daddr.byte4 = 52;
+	ih->daddr.byte3 = 30;
+	ih->daddr.byte4 = 71;
 	/*UDP header*/
 	uh = (udp_header*) (packet + sizeof(eth_header) + sizeof(ip_header));
 	uh->dport = htons(50030);
@@ -63,8 +63,9 @@ void PreparePacket(u_char *packet, char *data)
 	uh->len = htons(sizeof(udp_header) + sizeof(pkt_data));
 	/*Packet Data*/
 	pd = (pkt_data*) (packet + sizeof(eth_header) + sizeof(ip_header) + sizeof(udp_header));
-	pd->seq = 1;
-	pd->ack = 2;
+	pd->seq = seq;
+	pd->ack = bytes;
+	memset(pd->data, 0, DATA_SIZE);
 	memcpy(pd->data, data, DATA_SIZE); //PROMENJENA LINIJA KODA!!! stajalo: strcpy
 }
 
@@ -72,7 +73,10 @@ int main()
 {
 	pcap_if_t *alldevs; 
 	pcap_if_t *d;
+	pkt_data* pd;
 	int n;
+	int num_of_read_bytes = 0;
+	int seq = 0;
 
 	int inum;
 	int i=0;
@@ -83,7 +87,7 @@ int main()
 	u_int netmask;
 	char packet_filter[] = "ip and udp and dst port 50030";
 	struct bpf_program fcode;
-	
+
 	FILE *ptr_myfile;
 	u_char buf[sizeof(eth_header) + sizeof(udp_header)+sizeof(ip_header)+sizeof(pkt_data)];
 	char read_data[DATA_SIZE];
@@ -149,17 +153,30 @@ int main()
 		return 1;
 	}
 
-	for(i=0; i<3; i++)
+	while(1)
 	{
-		fread(read_data, DATA_SIZE, 1, ptr_myfile);
-		PreparePacket(buf, read_data);
-		if (pcap_sendpacket(adhandle, buf, packet_size) != 0)
+		num_of_read_bytes = fread(read_data, 1, DATA_SIZE, ptr_myfile);
+		if(num_of_read_bytes < DATA_SIZE)
 		{
-			fprintf(stderr,"\nError sending the packet: %s\n", pcap_geterr(adhandle));
-			return;
+			PreparePacket(buf, read_data, -1, num_of_read_bytes);
+			if (pcap_sendpacket(adhandle, buf, TOTAL_LENGTH) != 0)
+			{
+				fprintf(stderr,"\nError sending the packet: %s\n", pcap_geterr(adhandle));
+				return;
+			}
+			break;
+		} else
+		{ 
+			PreparePacket(buf, read_data, seq, 0);
+			seq++;
+			if (pcap_sendpacket(adhandle, buf, TOTAL_LENGTH) != 0)
+			{
+				fprintf(stderr,"\nError sending the packet: %s\n", pcap_geterr(adhandle));
+				return;
+			}
 		}
 	}
-	
+
 	fclose(ptr_myfile);
 
 	return 0;
