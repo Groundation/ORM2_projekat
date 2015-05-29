@@ -18,9 +18,18 @@
     <ClCompile Include="project.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="package_functions.c">
+      <Filter>Header Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\pcap.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="orm_types.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="package_functions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

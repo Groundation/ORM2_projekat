@@ -22,6 +22,7 @@ $RECYCLE.BIN/
 *.pdb
 *.idb
 *.ipch
+*.cache
 
 # Windows shortcuts
 *.lnk
