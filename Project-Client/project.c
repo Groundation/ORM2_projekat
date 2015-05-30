@@ -8,21 +8,24 @@
  
 int main()
 {
+	pkt_data_struct *pd_ptr;
 	pcap_if_t		*alldevs; 
 	pcap_if_t		*d;
 	pkt_data_struct	*pd;
+	pkt_data_struct	*test;
 	int n;
 	int num_of_read_bytes = 0;
 	int seq = 0;
-
+	int res;
 	int inum;
 	int i=0;
 	int lenght;
 	pcap_t *adhandle;
 	struct pcap_pkthdr* pkt_header;
+	const u_char *pkt_data;
 	char errbuf[PCAP_ERRBUF_SIZE];
 	u_int netmask;
-	char packet_filter[] = "ip and udp and dst port 50030";
+	char packet_filter[] = "ip and udp and dst port 50020";
 	struct bpf_program fcode;
 
 	FILE *ptr_myfile;
@@ -54,7 +57,7 @@ int main()
 	
 	//printf("Enter the interface number (1-%d):",i);
 	//scanf("%d", &inum);
-	inum=2;
+	inum = 1;
 	/* Check if the user specified a valid adapter */
 	if(inum < 1 || inum > i)
 	{
@@ -82,8 +85,45 @@ int main()
 		pcap_freealldevs(alldevs);
 		return -1;
 	}
+
+	/* Check the link layer. We support only Ethernet for simplicity. */
+	if(pcap_datalink(adhandle) != DLT_EN10MB)
+	{
+		fprintf(stderr,"\nThis program works only on Ethernet networks.\n");
+		
+		pcap_freealldevs(alldevs);
+		return -1;
+	}
 	
-	ptr_myfile = fopen("test.txt","rb");
+	if(d->addresses != NULL)
+		
+		netmask=((struct sockaddr_in *)(d->addresses->netmask))->sin_addr.S_un.S_addr;
+	else
+		
+		netmask=0xffffff; 
+
+
+	//compile the filter
+	if (pcap_compile(adhandle, &fcode, packet_filter, 1, netmask) <0 )
+	{
+		fprintf(stderr,"\nUnable to compile the packet filter. Check the syntax.\n");
+		
+		pcap_freealldevs(alldevs);
+		return -1;
+	}
+	
+	//set the filter
+	if (pcap_setfilter(adhandle, &fcode)<0)
+	{
+		fprintf(stderr,"\nError setting the filter.\n");
+		
+		pcap_freealldevs(alldevs);
+		return -1;
+	}
+	
+	pcap_freealldevs(alldevs);
+
+	ptr_myfile = fopen("slika.jpg","rb");
 	if (!ptr_myfile)
 	{
 		printf("Unable to open file!");
@@ -95,13 +135,14 @@ int main()
 		num_of_read_bytes = fread(read_data, 1, DATA_SIZE, ptr_myfile);
 		if(num_of_read_bytes < DATA_SIZE)
 		{
-			PreparePacket(buf, read_data, -1, num_of_read_bytes);
+			seq = -1;
+			PreparePacket(buf, read_data, seq, num_of_read_bytes);
 			if (pcap_sendpacket(adhandle, buf, TOT_LEN) != 0)
 			{
 				fprintf(stderr,"\nError sending the packet: %s\n", pcap_geterr(adhandle));
 				return;
 			}
-			break;
+			//printf("POSLAO!\n");
 		} else
 		{ 
 			PreparePacket(buf, read_data, seq, 0);
@@ -111,7 +152,28 @@ int main()
 				fprintf(stderr,"\nError sending the packet: %s\n", pcap_geterr(adhandle));
 				return;
 			}
+			printf("POSLAO\n");
 		}
+		test = (pkt_data_struct*) (buf + TOT_LEN - DAT_LEN);
+		/* Retrieve the packets */
+		while((res = pcap_next_ex( adhandle, &pkt_header, &pkt_data)) >= 0)
+		{
+			if(res == 0)
+			{	
+				continue;
+			} else
+			{
+				pd_ptr = (pkt_data_struct*) (pkt_data + TOT_LEN - DAT_LEN);
+				printf("ACK ocekivani: %d\n", test -> seq+1);
+				printf("ACK primljen: %d\n", pd_ptr -> ack);
+				if(pd_ptr -> ack == test->seq+1)
+				{
+					break;
+				}
+			}
+		}
+		if(num_of_read_bytes < DATA_SIZE)
+			break;
 	}
 
 	fclose(ptr_myfile);
