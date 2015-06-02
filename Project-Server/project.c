@@ -8,6 +8,7 @@
 #include "global.h"
 #include "proto.h"
 #include "fun.c"
+#pragma pack(push, 1)
 
 int main()
 {
@@ -24,11 +25,17 @@ int main()
 	u_char *pkt;
 	
 	last_pkt = FALSE;
-
+	/*wr_end = FALSE;
+	n_block = 0;
+	seq = 0;
+	more_pkts = 0;
+	useful_bytes = 0;
+	*/
 	/* init semaphore */
-	sem_init(&pkt_arrived, 0, 0);
+	//sem_init(&pkt_arrived, 0, 0);
 	/* create thread Buffering*/
-	pthread_create(&buf_thr, NULL, Writing, NULL);
+	//pthread_create(&buf_thr, NULL, Writing, NULL);
+	//pthread_mutex_init(&mtx, NULL);
 	/* TODO: init sliding window */
 	
 
@@ -55,9 +62,9 @@ int main()
 		return -1;
 	}
 	
-	printf("Enter the interface number (1-%d):",i);
-	scanf("%d", &inum);
-	
+	//printf("Enter the interface number (1-%d):",i);
+	//scanf("%d", &inum);
+	inum = 1;
 	/* Check if the user specified a valid adapter */
 	if(inum < 1 || inum > i)
 	{
@@ -76,7 +83,7 @@ int main()
 							 65536,			// portion of the packet to capture. 
 											// 65536 grants that the whole packet will be captured on all the MACs.
 							 1,				// promiscuous mode (nonzero means promiscuous)
-							 1000,			// read timeout
+							 3000,			// read timeout
 							 errbuf			// error buffer
 							 )) == NULL)
 	{
@@ -126,27 +133,33 @@ int main()
 	/* At this point, we don't need any more the device list. Free it */
 	pcap_freealldevs(alldevs);
 
-	/* open file for writing in addition mode */
-	fd = fopen("test.bin", "wb");
-	
+	/* open file for writing */
+	fd = fopen("slika.jpg", "wb");
+
 	/* Retrieve the packets */
     while((res = pcap_next_ex(adhandle, &header, &pkt)) >= 0){
         
         if(res == 0)
-            /* Timeout elapsed */
-            continue;
-
-		//sem_post(&pkt_arrived);
-		
-		PacketHandler(pkt, fd);
-		if(last_pkt)
+		{
 			break;
+		}
+		else
+		{
+			/* Send ACK and write user data to file*/
+			PacketHandler(adhandle, pkt, fd);
+		
+			if(last_pkt)
+				break;
+		}
     }
 
-	/* close file */
+	//pthread_join(buf_thr, NULL);
+	printf("izasao\n");
 	fclose(fd);
+	printf("zatvorio\n");
 	/*destroy semaphore */
-	sem_destroy(&pkt_arrived);
+	//sem_destroy(&pkt_arrived);
+	//pthread_mutex_destroy(&mtx);
 
 	return 0;
 }

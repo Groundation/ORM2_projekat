@@ -1,14 +1,17 @@
 #include <pcap.h>
 
-#define DATA_SIZE 4
-#define ETH_LEN 14
-#define IP_LEN 20
-#define UDP_LEN 8
-#define TOT_LEN ETH_LEN + IP_LEN + UDP_LEN
+#define DATA_SIZE 1024
+#define ETH_LEN sizeof(eth_header)
+#define IP_LEN	sizeof(ip_header)
+#define UDP_LEN sizeof(udp_header)
+#define DAT_LEN sizeof(pkt_data)
+#define TOT_LEN ETH_LEN + IP_LEN + UDP_LEN + DAT_LEN
+#define FIRST_SEQ 0
 #define LAST_SEQ -1
 #define TRUE 1
 #define FALSE 0
-#define SWS 5 //sliding window size
+#define MAC_ADDR_BYTES_NUM 6
+#define SWS 4 //sliding window size
 
 /* Packet header and data */
 typedef struct pkt_data
@@ -51,12 +54,23 @@ typedef struct udp_header
 	u_short crc;			// Checksum
 }udp_header;
 
+/* 6 bytes MAC address */
+typedef struct mac_address
+{
+	u_char byte1;
+	u_char byte2;
+	u_char byte3;
+	u_char byte4;
+	u_char byte5;
+	u_char byte6;
+}mac_address;
+
 /* Ethernet header */
 typedef struct eth_header
 {
-	u_char dest[6];
-	u_char source[6];
-	u_char eth_type[2];
+	mac_address daddr;	// Destination address
+	mac_address saddr;	// Source address
+	u_char eth_type[2];	// Ethernet type
 }eth_header;
 
 /* Sliding window */
