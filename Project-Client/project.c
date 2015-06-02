@@ -76,7 +76,7 @@ int main()
 							 65536,			// portion of the packet to capture. 
 											// 65536 grants that the whole packet will be captured on all the MACs.
 							 1,				// promiscuous mode (nonzero means promiscuous)
-							 1000,			// read timeout
+							 1,			// read timeout
 							 errbuf			// error buffer
 							 )) == NULL)
 	{
@@ -149,10 +149,11 @@ int main()
 			seq++;
 			if (pcap_sendpacket(adhandle, buf, TOT_LEN) != 0)
 			{
+				printf("\n%d\n", res);
 				fprintf(stderr,"\nError sending the packet: %s\n", pcap_geterr(adhandle));
 				return;
 			}
-			printf("POSLAO\n");
+			//printf("POSLAO\n");
 		}
 		test = (pkt_data_struct*) (buf + TOT_LEN - DAT_LEN);
 		/* Retrieve the packets */
@@ -164,8 +165,8 @@ int main()
 			} else
 			{
 				pd_ptr = (pkt_data_struct*) (pkt_data + TOT_LEN - DAT_LEN);
-				printf("ACK ocekivani: %d\n", test -> seq+1);
-				printf("ACK primljen: %d\n", pd_ptr -> ack);
+				//printf("ACK ocekivani: %d\n", test -> seq+1);
+				//printf("ACK primljen: %d\n", pd_ptr -> ack);
 				if(pd_ptr -> ack == test->seq+1)
 				{
 					break;

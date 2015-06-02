@@ -13,16 +13,16 @@ void PreparePacket(u_char *packet, char *data, int seq, int bytes)
 	eh_ptr->daddr.byte1 = 0x00;
 	eh_ptr->daddr.byte2 = 0x19;
 	eh_ptr->daddr.byte3 = 0x99;
-	eh_ptr->daddr.byte4 = 0xD2;
-	eh_ptr->daddr.byte5 = 0xB2;
-	eh_ptr->daddr.byte6 = 0xF5;
+	eh_ptr->daddr.byte4 = 0xD3;
+	eh_ptr->daddr.byte5 = 0x94;
+	eh_ptr->daddr.byte6 = 0xa0;
 	/* Source address */
 	eh_ptr->saddr.byte1 = 0x00;
 	eh_ptr->saddr.byte2 = 0x19;
 	eh_ptr->saddr.byte3 = 0x99;
-	eh_ptr->saddr.byte4 = 0xD3;
-	eh_ptr->saddr.byte5 = 0x95;
-	eh_ptr->saddr.byte6 = 0xFD;
+	eh_ptr->saddr.byte4 = 0xD2;
+	eh_ptr->saddr.byte5 = 0xb3;
+	eh_ptr->saddr.byte6 = 0x8f;
 	/* Ethernet type */
 	eh_ptr->eth_type[0] = 0x08;	// Internet Protocol version 4
 	eh_ptr->eth_type[1] = 0x00;
@@ -39,12 +39,12 @@ void PreparePacket(u_char *packet, char *data, int seq, int bytes)
 	ih_ptr->saddr.byte1 = 192;
 	ih_ptr->saddr.byte2 = 168;
 	ih_ptr->saddr.byte3 = 32;
-	ih_ptr->saddr.byte4 = 60;
+	ih_ptr->saddr.byte4 = 64;
 	/* Destination address */
 	ih_ptr->daddr.byte1 = 192;
 	ih_ptr->daddr.byte2 = 168;
 	ih_ptr->daddr.byte3 = 32;
-	ih_ptr->daddr.byte4 = 63;
+	ih_ptr->daddr.byte4 = 52;
 
 	/*UDP header*/
 	uh_ptr			= (udp_header_struct*) ((u_char*)ih_ptr + IPH_LEN);
