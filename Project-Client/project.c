@@ -5,6 +5,7 @@
 #include <pcap.h>
 #include <pthread.h>
 #include "package_functions.h"
+#include "windows.h"
  
 int main()
 {
@@ -19,6 +20,9 @@ int main()
 	int res;
 	int inum;
 	int i=0;
+	int j=0;
+	int k=0;
+	int br_trans = 1;
 	int lenght;
 	pcap_t *adhandle;
 	struct pcap_pkthdr* pkt_header;
@@ -76,7 +80,7 @@ int main()
 							 65536,			// portion of the packet to capture. 
 											// 65536 grants that the whole packet will be captured on all the MACs.
 							 1,				// promiscuous mode (nonzero means promiscuous)
-							 1,			// read timeout
+							 1,				// read timeout
 							 errbuf			// error buffer
 							 )) == NULL)
 	{
@@ -129,48 +133,57 @@ int main()
 		printf("Unable to open file!");
 		return 1;
 	}
-
+	
 	while(1)
 	{
 		num_of_read_bytes = fread(read_data, 1, DATA_SIZE, ptr_myfile);
 		if(num_of_read_bytes < DATA_SIZE)
 		{
-			seq = -1;
-			PreparePacket(buf, read_data, seq, num_of_read_bytes);
-			if (pcap_sendpacket(adhandle, buf, TOT_LEN) != 0)
-			{
-				fprintf(stderr,"\nError sending the packet: %s\n", pcap_geterr(adhandle));
-				return;
-			}
-			//printf("POSLAO!\n");
-		} else
-		{ 
-			PreparePacket(buf, read_data, seq, 0);
-			seq++;
-			if (pcap_sendpacket(adhandle, buf, TOT_LEN) != 0)
-			{
-				printf("\n%d\n", res);
-				fprintf(stderr,"\nError sending the packet: %s\n", pcap_geterr(adhandle));
-				return;
-			}
-			//printf("POSLAO\n");
+			seq = -seq;
 		}
+		PreparePacket(buf, read_data, seq, num_of_read_bytes);
+		seq++;
+		if (pcap_sendpacket(adhandle, buf, TOT_LEN) != 0)
+		{
+			fprintf(stderr,"\nError sending the packet: %s\n", pcap_geterr(adhandle));
+			return;
+		}
+
 		test = (pkt_data_struct*) (buf + TOT_LEN - DAT_LEN);
 		/* Retrieve the packets */
-		while((res = pcap_next_ex( adhandle, &pkt_header, &pkt_data)) >= 0)
+		while((res = pcap_next_ex(adhandle, &pkt_header, &pkt_data)) >= 0)
 		{
+
 			if(res == 0)
-			{	
-				continue;
-			} else
 			{
-				pd_ptr = (pkt_data_struct*) (pkt_data + TOT_LEN - DAT_LEN);
-				//printf("ACK ocekivani: %d\n", test -> seq+1);
-				//printf("ACK primljen: %d\n", pd_ptr -> ack);
-				if(pd_ptr -> ack == test->seq+1)
+				if(j == 400*br_trans)
 				{
-					break;
+					pcap_sendpacket(adhandle, buf, TOT_LEN);
+					printf("uradio sam transmisiju");
+					j = 0;
+					if(br_trans == 5)
+					{
+						printf("\nnije uspeo da posalje paket posle dosta transmisija\n");
+						return 1;
+					} else
+					{
+						br_trans++;
+					}
+				} else
+				{
+					j++;
 				}
+				continue;
+			}
+
+			pd_ptr = (pkt_data_struct*) (pkt_data + TOT_LEN - DAT_LEN);
+			//printf("ACK ocekivani: %d\n", test -> seq+1);
+			//printf("ACK primljen: %d\n", pd_ptr -> ack);
+			if(pd_ptr -> ack == test->seq+1)
+			{
+				j = 0;
+				br_trans = 1;
+				break;
 			}
 		}
 		if(num_of_read_bytes < DATA_SIZE)

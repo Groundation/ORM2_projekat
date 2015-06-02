@@ -124,6 +124,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\pcap.h" />
+    <ClInclude Include="global.h" />
+    <ClInclude Include="types.h" />
+    <ClInclude Include="proto.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

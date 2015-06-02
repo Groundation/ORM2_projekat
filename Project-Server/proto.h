@@ -1,9 +1,14 @@
 #include "global.h"
 
-/* prototype of the packet handler */
+pcap_t* SelectAndOpenDevice();
+
+int CompileAndSetFilter(pcap_t* adhandle);
+
 void PacketHandler(pcap_t* adhandle, u_char *pkt, FILE* file_p);
 
-/* prototype of the buffering thread */
+void PreparePacket();
+
+/* prototype of buffering thread */
 void* Buffering(void* param);
 
 /* prototype of writing file thread */

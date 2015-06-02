@@ -2,29 +2,46 @@
 // Osnovi Racunarskih Mreza 2
 // File name: project.c
 
-#include "orm_types.h"
+#include "types.h"
 #include "pthread.h"
 #include "semaphore.h"
 #include "global.h"
 #include "proto.h"
 #include "fun.c"
-#pragma pack(push, 1)
 
 int main()
-{
-	pcap_if_t *alldevs;
-	pcap_if_t *d;
-	int inum, res;
-	int i=0;
+{	
+	/*******************************/
+	/**** VARIABLES DECLARATION ****/
+	/*******************************/
+
+	/* handler of opened device */
 	pcap_t *adhandle;
-	char errbuf[PCAP_ERRBUF_SIZE];
-	u_int netmask;
-	char packet_filter[] = "ip and udp port 50030";
-	struct bpf_program fcode;
-	struct pcap_pkthdr *header;
+	
+	/* packet buffer */
 	u_char *pkt;
 	
+	/* temp variables needed for pcap_next_ex */
+	int res;
+	struct pcap_pkthdr *header;
+
+	/* counter for timeout */
+	int n = 0;
+
+	/* file pointer */
+	FILE* fd;
+
+
+
+	/**********************/
+	/**** MAIN PROGRAM ****/
+	/**********************/
+
+	/* init global variables */
+	previous_seq = FIRST_SEQ - 1;
 	last_pkt = FALSE;
+
+	/* NEEDED FOR WRITING THREAD */
 	/*wr_end = FALSE;
 	n_block = 0;
 	seq = 0;
@@ -39,123 +56,46 @@ int main()
 	/* TODO: init sliding window */
 	
 
-	/* Retrieve the device list */
-	if(pcap_findalldevs(&alldevs, errbuf) == -1)
-	{
-		fprintf(stderr,"Error in pcap_findalldevs: %s\n", errbuf);
-		exit(1);
-	}
-	
-	/* Print the list */
-	for(d=alldevs; d; d=d->next)
-	{
-		printf("%d. %s", ++i, d->name);
-		if (d->description)
-			printf(" (%s)\n", d->description);
-		else
-			printf(" (No description available)\n");
-	}
 
-	if(i==0)
-	{
-		printf("\nNo interfaces found! Make sure WinPcap is installed.\n");
-		return -1;
-	}
+	/* Retrieve device list, select apropriate device and open that device */
+	if((adhandle = SelectAndOpenDevice()) == NULL)
+		return ERROR;
 	
-	//printf("Enter the interface number (1-%d):",i);
-	//scanf("%d", &inum);
-	inum = 1;
-	/* Check if the user specified a valid adapter */
-	if(inum < 1 || inum > i)
-	{
-		printf("\nAdapter number out of range.\n");
-		
-		/* Free the device list */
-		pcap_freealldevs(alldevs);
-		return -1;
-	}
+	/* Check link layer, retrieve netmask, compile and set filter */
+	if(CompileAndSetFilter(adhandle) == ERROR)
+		return ERROR;
 
-	/* Jump to the selected adapter */
-	for(d=alldevs, i=0; i< inum-1 ;d=d->next, i++);
-	
-	/* Open the adapter */
-	if ((adhandle = pcap_open_live(d->name,	// name of the device
-							 65536,			// portion of the packet to capture. 
-											// 65536 grants that the whole packet will be captured on all the MACs.
-							 1,				// promiscuous mode (nonzero means promiscuous)
-							 3000,			// read timeout
-							 errbuf			// error buffer
-							 )) == NULL)
-	{
-		fprintf(stderr,"\nUnable to open the adapter. %s is not supported by WinPcap\n");
-		/* Free the device list */
-		pcap_freealldevs(alldevs);
-		return -1;
-	}
-	
-	/* Check the link layer. We support only Ethernet for simplicity. */
-	if(pcap_datalink(adhandle) != DLT_EN10MB)
-	{
-		fprintf(stderr,"\nThis program works only on Ethernet networks.\n");
-		/* Free the device list */
-		pcap_freealldevs(alldevs);
-		return -1;
-	}
-	
-	if(d->addresses != NULL)
-		/* Retrieve the mask of the first address of the interface */
-		netmask=((struct sockaddr_in *)(d->addresses->netmask))->sin_addr.S_un.S_addr;
-	else
-		/* If the interface is without addresses we suppose to be in a C class network */
-		netmask=0xffffff; 
-
-
-	//compile the filter
-	if (pcap_compile(adhandle, &fcode, packet_filter, 1, netmask) <0 )
-	{
-		fprintf(stderr,"\nUnable to compile the packet filter. Check the syntax.\n");
-		/* Free the device list */
-		pcap_freealldevs(alldevs);
-		return -1;
-	}
-	
-	//set the filter
-	if (pcap_setfilter(adhandle, &fcode)<0)
-	{
-		fprintf(stderr,"\nError setting the filter.\n");
-		/* Free the device list */
-		pcap_freealldevs(alldevs);
-		return -1;
-	}
-	
-	printf("\nlistening on %s...\n", d->description);
-	
-	/* At this point, we don't need any more the device list. Free it */
-	pcap_freealldevs(alldevs);
-
-	/* open file for writing */
-	fd = fopen("slika.jpg", "wb");
+	/* Open file for writing */
+	fd = fopen("slika1.jpg", "wb");
 
 	/* Retrieve the packets */
     while((res = pcap_next_ex(adhandle, &header, &pkt)) >= 0){
         
-        if(res == 0)
+		if(res == 0) //read timeout
 		{
-			break;
+			//printf("%d\n", n);
+			//if(++n == TMOUT)
+				//break;
+			
+			continue;
 		}
-		else
-		{
-			/* Send ACK and write user data to file*/
-			PacketHandler(adhandle, pkt, fd);
 		
-			if(last_pkt)
-				break;
-		}
+		n = 0; //reset timeout counter
+
+		/* Send ACK and write user data to file*/
+		PacketHandler(adhandle, pkt, fd);
+		
+		if(last_pkt)
+			break;
+		
     }
 
 	//pthread_join(buf_thr, NULL);
 	printf("izasao\n");
+	
+	/* Close file */
 	fclose(fd);
+
 	printf("zatvorio\n");
 	/*destroy semaphore */
 	//sem_destroy(&pkt_arrived);
