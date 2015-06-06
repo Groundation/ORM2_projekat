@@ -122,9 +122,6 @@ int CompileAndSetFilter(pcap_t* adhandle)
 		return ERROR;
 	}
 
-	printf("\nlistening on %s...\n", d->description);
-	
-
 	return 1;
 }
 

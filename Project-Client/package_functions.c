@@ -42,7 +42,7 @@ void InitPackets(u_char *packet, mac_address_struct daddr, mac_address_struct sa
 	uh_ptr->len		= htons(UDP_LEN + DAT_LEN);	// Length of UPD + DATA
 }
 
-void PrepareData(u_char *packet, char *data, int seq, int bytes)
+void PrepareData(u_char *packet, u_char *data, int seq, int bytes)
 {
 	pkt_data_struct		*pd_ptr;
 
@@ -54,15 +54,39 @@ void PrepareData(u_char *packet, char *data, int seq, int bytes)
 	memcpy(pd_ptr->data, data,	DATA_SIZE);
 }
 
+int FillPacket(u_char *buffer,int *ex_ack)
+{
+	u_char data[DATA_SIZE];
+	int num_of_read_bytes	= 0;
+
+	pthread_mutex_lock(&file_mutx);
+	if(last_pkt)
+	{
+		pthread_mutex_unlock(&file_mutx);
+		return 1;
+	}
+	num_of_read_bytes = fread(data, 1, DATA_SIZE, file_ptr);
+	if(num_of_read_bytes < DATA_SIZE)
+	{
+		seq = -seq;
+		last_pkt = 1;
+	}
+	PrepareData(buffer, data, seq, num_of_read_bytes);
+	printf("\nSeq: %d\n", seq);
+	*ex_ack = ++seq;
+	pthread_mutex_unlock(&file_mutx);
+	return 0;
+}
+
 void SetupMacAdress()
 {
 	/* Wifi destination address*/
 	wif_dmac.byte1 = 0x00;
 	wif_dmac.byte2 = 0x0e;
 	wif_dmac.byte3 = 0x8e;
-	wif_dmac.byte4 = 0x45;
-	wif_dmac.byte5 = 0xb4;
-	wif_dmac.byte6 = 0xa4;
+	wif_dmac.byte4 = 0x61;
+	wif_dmac.byte5 = 0xbb;
+	wif_dmac.byte6 = 0x7b;
 	/* wifi source address */
 	wif_smac.byte1 = 0x00;
 	wif_smac.byte2 = 0x0e;
