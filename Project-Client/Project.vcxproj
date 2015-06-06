@@ -120,11 +120,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="adapter_functions.c" />
     <ClCompile Include="package_functions.c" />
     <ClCompile Include="project.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\include\pcap.h" />
+    <ClInclude Include="adapter_functions.h" />
+    <ClInclude Include="globals.h" />
     <ClInclude Include="orm_types.h" />
     <ClInclude Include="package_functions.h" />
   </ItemGroup>

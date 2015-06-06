@@ -3,7 +3,7 @@
 
 #include <pcap.h>
 
-#define DATA_SIZE 1464 /* MAX 1464 */ 
+#define DATA_SIZE 4 /* MAX 1464 */ 
 
 #define ETH_LEN sizeof(eth_header_struct)
 #define IPH_LEN sizeof(ip_header_struct)
@@ -66,8 +66,8 @@ typedef struct udp_header_struct
 /* Packet header and data */
 typedef struct pkt_data_struct
 {
-	int seq;				//Sequence number
 	int ack;				//Acknowledgement
+	int seq;				//Sequence number
 	u_char data[DATA_SIZE];	//Data
 }pkt_data_struct;
 
