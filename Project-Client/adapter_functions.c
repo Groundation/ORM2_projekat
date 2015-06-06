@@ -124,8 +124,6 @@ int CompileAndSetFilter(pcap_t* adhandle)
 
 	printf("\nlistening on %s...\n", d->description);
 	
-	/* At this point, we don't need any more the device list. Free it */
-	pcap_freealldevs(alldevs);
 
 	return 1;
 }

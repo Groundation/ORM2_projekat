@@ -8,6 +8,8 @@ FILE			*file_ptr;
 
 pcap_if_t		*alldevs;
 pcap_if_t		*d;
+
+int				seq;	
 int				num_inter;		
 
 mac_address_struct	eth_smac;

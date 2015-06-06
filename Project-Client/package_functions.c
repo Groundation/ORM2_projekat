@@ -42,7 +42,7 @@ void InitPackets(u_char *packet, mac_address_struct daddr, mac_address_struct sa
 	uh_ptr->len		= htons(UDP_LEN + DAT_LEN);	// Length of UPD + DATA
 }
 
-void PreparePacket(u_char *packet, char *data, int seq, int bytes)
+void PrepareData(u_char *packet, char *data, int seq, int bytes)
 {
 	pkt_data_struct		*pd_ptr;
 
