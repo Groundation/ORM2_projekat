@@ -3,7 +3,7 @@
 
 #include <pcap.h>
 
-#define DATA_SIZE 100 /* MAX 1464 */ 
+#define DATA_SIZE 1464 /* MAX 1464 */ 
 
 #define ETH_LEN sizeof(eth_header_struct)
 #define IPH_LEN sizeof(ip_header_struct)

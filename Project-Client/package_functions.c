@@ -38,7 +38,7 @@ void InitPackets(u_char *packet, mac_address_struct daddr, mac_address_struct sa
 	/*UDP header*/
 	uh_ptr			= (udp_header_struct*) ((u_char*)ih_ptr + IPH_LEN);
 	uh_ptr->dport	= htons(50030);				// Destination Port
-	uh_ptr->sport	= htons(50020);				// Source Port
+	uh_ptr->sport	= htons(60030);				// Source Port
 	uh_ptr->len		= htons(UDP_LEN + DAT_LEN);	// Length of UPD + DATA
 }
 
@@ -84,16 +84,16 @@ void SetupMacAdress()
 	wif_dmac.byte1 = 0x00;
 	wif_dmac.byte2 = 0x0e;
 	wif_dmac.byte3 = 0x8e;
-	wif_dmac.byte4 = 0x61;
-	wif_dmac.byte5 = 0xbb;
-	wif_dmac.byte6 = 0x7b;
+	wif_dmac.byte4 = 0x45;
+	wif_dmac.byte5 = 0xb4;
+	wif_dmac.byte6 = 0xa4;
 	/* wifi source address */
 	wif_smac.byte1 = 0x00;
 	wif_smac.byte2 = 0x0e;
 	wif_smac.byte3 = 0x8e;
-	wif_smac.byte4 = 0x45;
-	wif_smac.byte5 = 0xb4;
-	wif_smac.byte6 = 0x56;
+	wif_smac.byte4 = 0x61;
+	wif_smac.byte5 = 0x8d;
+	wif_smac.byte6 = 0x6e;
 	/* Ethernet destination address*/
 	eth_dmac.byte1 = 0xa0;
 	eth_dmac.byte2 = 0x48;

@@ -74,7 +74,7 @@ pcap_t* SelectAndOpenDevice()
 
 int CompileAndSetFilter(pcap_t* adhandle)
 {
-	char packet_filter[] = "ip and udp and dst port 50020";
+	char packet_filter[] = "ip and udp and dst port 60030";
 	struct bpf_program fcode;
 	struct pcap_pkthdr *header;
 	u_int netmask;

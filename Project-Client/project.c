@@ -14,13 +14,15 @@ void *WifThread(void *param)
 
 	pkt_data_struct *pd_ptr;
 
+	struct pcap_pkthdr *header;
+
 	int ex_ack				= 0;
-	/*int num_of_read_bytes	= 0;
 	int timeout				= 0;
 	int mili_sec			= 0;
 	int num_retrans			= 0;
-	*/
+	
 	u_char data[DATA_SIZE];
+	u_char *pkt_data;
 
 	pthread_mutex_lock(&term_mutx);
 	printf("Wifi ");
@@ -57,11 +59,11 @@ void *WifThread(void *param)
 			return;
 		}
 		/* Retrieve the packets */
-		/*while((timeout = pcap_next_ex(adhandle, &pkt_header, &pkt_data)) >= 0)
-		{*/
-			/* Timeout occured */
-			/*if(timeout == 0)
-			{*/
+		while((timeout = pcap_next_ex(adhandle, &header, &pkt_data)) >= 0)
+		{
+			
+			if(timeout == 0)
+			{
 				/*if(mili_sec == 400*num_retrans)
 				{
 					pcap_sendpacket(adhandle, buffer, TOT_LEN);
@@ -79,9 +81,10 @@ void *WifThread(void *param)
 				{
 					mili_sec++;
 				}*/
-			/*} else
+			} else
 			{
 				pd_ptr = (pkt_data_struct*) (pkt_data + TOT_LEN - DAT_LEN);
+				//printf("Dobio je ack: %d, a treba: %d.", pd_ptr -> ack, ex_ack);
 				if(pd_ptr -> ack == ex_ack)
 				{
 					mili_sec = 0;
@@ -89,7 +92,7 @@ void *WifThread(void *param)
 					break;
 				}
 			}
-		}*/
+		}
 	}
 }
 
@@ -99,13 +102,15 @@ void *EthThread(void *param)
 
 	pkt_data_struct *pd_ptr;
 
+	struct pcap_pkthdr *header;
+
 	int ex_ack				= 0;
-	/*int num_of_read_bytes	= 0;
 	int timeout				= 0;
 	int mili_sec			= 0;
 	int num_retrans			= 0;
-	*/
-	char data[DATA_SIZE];
+	
+	u_char data[DATA_SIZE];
+	u_char *pkt_data;
 
 	pthread_mutex_lock(&term_mutx);
 	printf("Ethernet ");
@@ -142,20 +147,19 @@ void *EthThread(void *param)
 			return;
 		}
 		/* Retrieve the packets */
-		/*while((timeout = pcap_next_ex(adhandle, &pkt_header, &pkt_data)) >= 0)
-		{*/
-			/* Timeout occured */
-			/*if(timeout == 0)
-			{*/
-				/*if(mili_sec == 400*num_retrans)
+		while((timeout = pcap_next_ex(adhandle, &header, &pkt_data)) >= 0)
+		{
+			
+			if(timeout == 0)
+			{
+				if(mili_sec == 1000*num_retrans)
 				{
-					pcap_sendpacket(adhandle, buffer, TOT_LEN);
+					pcap_sendpacket(adhandle, eth_buffer, TOT_LEN);
 					printf("Retransmission...\n");
 					mili_sec = 0;
-					if(num_retrans == (5-1))
+					if(num_retrans == 3)
 					{
-						printf("\nShutdown!\n");
-						return 1;
+						num_retrans = 3;
 					} else
 					{
 						num_retrans++;
@@ -163,10 +167,11 @@ void *EthThread(void *param)
 				} else
 				{
 					mili_sec++;
-				}*/
-			/*} else
+				}
+			} else
 			{
 				pd_ptr = (pkt_data_struct*) (pkt_data + TOT_LEN - DAT_LEN);
+				//printf("Dobio je ack: %d, a treba: %d.", pd_ptr -> ack, ex_ack);
 				if(pd_ptr -> ack == ex_ack)
 				{
 					mili_sec = 0;
@@ -174,7 +179,7 @@ void *EthThread(void *param)
 					break;
 				}
 			}
-		}*/
+		}
 	}
 }
 
@@ -196,7 +201,7 @@ int main()
 	sem_init(&eth_init, 0, 0);
 	sem_init(&wif_init, 0, 0);
 
-	file_ptr = fopen("slika.jpg","rb");
+	file_ptr = fopen("test.pdf","rb");
 	if (!file_ptr)
 	{
 		printf("Unable to open file!");
