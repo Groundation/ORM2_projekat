@@ -23,7 +23,6 @@ $RECYCLE.BIN/
 *.idb
 *.ipch
 *.cache
-*.pdf
 *.sdf
 
 # Windows shortcuts
