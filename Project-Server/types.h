@@ -1,6 +1,9 @@
+#ifndef TYPES_H_INCLUDED
+#define TYPES_H_INCLUDED
+
 #include <pcap.h>
 
-#define DATA_SIZE 1464
+#define DATA_SIZE 1464 //4
 
 #define ETH_LEN sizeof(eth_header)
 #define IP_LEN	sizeof(ip_header)
@@ -23,8 +26,8 @@
 /* Packet header and data */
 typedef struct pkt_data
 {
-	int seq;
 	int ack;
+	int seq;
 	char data[DATA_SIZE];
 }pkt_data;
 
@@ -86,3 +89,4 @@ typedef struct sld_window
 	u_char left;
 	u_char right;
 }sld_window;
+#endif

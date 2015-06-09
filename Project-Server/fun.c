@@ -1,139 +1,169 @@
-#include "proto.h"
+#ifndef FUN_C_INCLUDED
+#define FUN_C_INCLUDED
+
+#include "fun.h"
 #include <windows.h>
 
-void* Buffering(void* param)
+void* AdapterThread(void* param)
 {
-	while(1)
+	/* temp variables needed for pcap_next_ex */
+	int res;
+	struct pcap_pkthdr* header;
+
+	/* handler of opened device */
+	pcap_t *adhandle;
+
+	/* packet buffer */
+	u_char* pkt;
+	u_char ack_pkt[TOT_LEN - DAT_LEN + 4];
+
+	/* true only before first packet arrives so we can init ACK packet */
+	u_char first_pkt = TRUE;
+
+	DWORD start, end;
+
+	int i = (int) param;
+
+	pthread_mutex_lock(&mtx);
+	adhandle = SelectAndOpenDevice();
+	if(CompileAndSetFilter(adhandle) == ERROR)
+		printf("Error setting filter\n");
+	pthread_mutex_unlock(&mtx);
+	
+	start = GetTickCount(); 
+
+	/* Retrieve the packets */
+    while((res = pcap_next_ex(adhandle, &header, &pkt)) >= 0)
 	{
+		if(res == 0) //read timeout
+		{
+			//if(++n == TMOUT)
+				//break;
+			if((last_pkt && (num_pkts >= total_num_pkts)))
+					break;	
+			
+			//printf("timeout, id: %d\n", i);
+			continue;
+		}
+		//n = 0; //reset timeout counter
+
+		/* Send ACK and write user data to file*/
+		PacketHandler(adhandle, pkt, ack_pkt, first_pkt, i);
 		
-	}
+		if(end_thr[i] || (last_pkt && (num_pkts >= total_num_pkts)))
+			break;	
+    }
+
+	end = GetTickCount();
+
+	pthread_mutex_lock(&terminal);
+	printf("running time: %d msec\n, thread: %d\n", (end - start), i);
+	pthread_mutex_unlock(&terminal);
+	
+	return 0;
 }
 
-/*void* Writing(void* param)
-{
-	while(1)
-	{	
-		sem_wait(&pkt_arrived);
-		while(more_pkts)
-		{
-			pthread_mutex_lock(&mtx);
-			more_pkts--;
-			pthread_mutex_unlock(&mtx);
-			 
-			if(last_pkt && !more_pkts)
-			{
-				printf("useful bytes: %d\n, seq: %d", fwrite(buf_rcv[seq], 1, useful_bytes, fd), seq);
-				wr_end = TRUE;
-			}
-			else
-			{
-				fwrite(buf_rcv[seq], 1, DATA_SIZE, fd);
-			}
-			seq++;
-		}
-
-		if(wr_end)
-			break;
-	}
-}*/
-
 /* function called for every incoming packet */
-void PacketHandler(pcap_t* adhandle, u_char *pkt, FILE* file_p)
+void PacketHandler(pcap_t* adhandle, u_char *pkt, u_char *ack_pkt, u_char first_pkt, int id)
 {
 	int current_ack = 0;
 
 	eth_header* eh;
 	ip_header* ih;
 	udp_header* uh;
+	pkt_data* pd;		//points to data stuff in incoming packet
+	pkt_data* ack_pd;	//points to data stuff in ack packet
+
 	mac_address temp_eth;
 	ip_address temp_ip;
-	int temp_port; 
+	int temp_port;
 
 	pd = (pkt_data *) (pkt + (TOT_LEN - DAT_LEN));
-	
+
+	pthread_mutex_lock(&mtx);
+	++num_pkts;
+	printf("seq num of packet: %d\nid: %d\nnum pkts: %d\n\n", pd->seq, id, num_pkts);
+	if(last_pkt && (num_pkts == total_num_pkts))
+		end_thr[id] = TRUE;
+	pthread_mutex_unlock(&mtx);
+
 	if(pd->seq < 0)	//last pkt arrived
 		current_ack = pd->ack;
-
+	
 	/* PREPARE PACKET FOR SENDING ACK */
 
-	/* Ethernet header */
-	eh = (eth_header*) pkt;
+	if(first_pkt)
+	{
+		first_pkt = FALSE;
 
-	/* IP header */
-	ih = (ip_header*) (pkt + ETH_LEN);
+		/* Ethernet header */
+		eh = (eth_header*) pkt;
 
-	/* UDP header */
-	uh = (udp_header*) ((u_char*) ih + IP_LEN);
+		/* IP header */
+		ih = (ip_header*) (pkt + ETH_LEN);
 
-	/* Switch MAC adresses */
-	temp_eth = eh->daddr;
-	eh->daddr = eh->saddr;
-	eh->saddr = temp_eth;
+		/* UDP header */
+		uh = (udp_header*) ((u_char*) ih + IP_LEN);
+
+		/* Switch MAC adresses */
+		temp_eth = eh->daddr;
+		eh->daddr = eh->saddr;
+		eh->saddr = temp_eth;
 	
-	/* Switch IP adresses */
-	temp_ip = ih->daddr;
-	ih->daddr = ih->saddr;
-	ih->saddr = temp_ip;
+		/* Switch IP adresses */
+		temp_ip = ih->daddr;
+		ih->daddr = ih->saddr;
+		ih->saddr = temp_ip;
 
-	/* Switch UDP ports */
-	temp_port = uh->dport;
-	uh->dport = uh->sport;
-	uh->sport = temp_port;
+		ih->tlen = ih->tlen - DAT_LEN + 4;
+	
+		/* Switch UDP ports */
+		temp_port = uh->dport;
+		uh->dport = uh->sport;
+		uh->sport = temp_port;
 
-	pd->ack = (pd->seq + 1);
+		uh->len = uh->len - DAT_LEN + 4;
+		
+		memcpy(ack_pkt, pkt, TOT_LEN - DAT_LEN + 4);
+	}
+
+	ack_pd = (pkt_data *) (ack_pkt + (TOT_LEN - DAT_LEN));
+	ack_pd->ack = (pd->seq + 1);
 
 	/* SEND ACK */
-	if(pcap_sendpacket(adhandle, pkt, TOT_LEN) != 0)
+	if(pcap_sendpacket(adhandle, ack_pkt, TOT_LEN - DAT_LEN + 4) != 0)
 	{
 		fprintf(stderr, "\nError sending ACK packet: %s\n", pcap_geterr(adhandle));
 	}
 
 	/* WRITE USER DATA TO FILE */
-	if(pd->seq == (previous_seq + 1))
+	if(pd->seq >= 0)	//last packet hasn't arrived
 	{
-		fwrite(pd->data, 1, DATA_SIZE, file_p);
+		pthread_mutex_lock(&file);
+		fseek(fd, DATA_SIZE*pd->seq, SEEK_SET);
+		fwrite(pd->data, 1, DATA_SIZE, fd);
+		pthread_mutex_unlock(&file);
 	}
 	else if(pd->seq < 0) //last packet arrived
 	{
-		fwrite(pd->data, 1, current_ack, file_p); //pd->ack is number of useful bytes
+		pthread_mutex_lock(&file);
+		fseek(fd, DATA_SIZE*(-(pd->seq)), SEEK_SET);
+		fwrite(pd->data, 1, current_ack, fd); //current ack is number of useful bytes
+		pthread_mutex_unlock(&file);
+
+		pthread_mutex_lock(&mtx);
 		last_pkt = TRUE;
+		total_num_pkts = (-pd->seq) + 1;
+		pthread_mutex_unlock(&mtx);
 	}
 
 	previous_seq = pd->seq;
-
-	/*if(pd->seq >= 0)
-	{
-		//memcpy(buf_rcv[pd->seq], pd->data, DATA_SIZE);
-		printf("buf_rcv - ph: %s\n", buf_rcv[pd->seq]);
-	}
-	else if(pd->seq == LAST_SEQ)
-	{
-		//printf("last_seq\n");
-		last_pkt = TRUE;
-		useful_bytes = pd->ack;
-	}
-
-	pthread_mutex_lock(&mtx);
-	more_pkts++;
-	//printf("more_pkts - ph: %d\n", more_pkts);
-	pthread_mutex_unlock(&mtx);
-
-	if((more_pkts - 1) == 0)
-		sem_post(&pkt_arrived);
-		*/
 }
 
-pcap_t* SelectAndOpenDevice()
+void FindAllDevices()
 {
-	/* buffer needed in case of error while searching devices */
+	/* Buffer needed in case of error while searching devices */
 	char errbuf[PCAP_ERRBUF_SIZE];
-	
-	/* temp numeric variables */
-	int i = 0;
-	int inum = 0;
-
-	/* return value */
-	pcap_t* ret_adhandle;
 
 	/* Retrieve the device list */
 	if(pcap_findalldevs(&alldevs, errbuf) == ERROR)
@@ -141,29 +171,35 @@ pcap_t* SelectAndOpenDevice()
 		fprintf(stderr,"Error in pcap_findalldevs: %s\n", errbuf);
 		exit(1);
 	}
-	
+
 	/* Print the list */
 	for(d=alldevs; d; d=d->next)
 	{
-		printf("%d. %s", ++i, d->name);
+		printf("%d. %s", ++num_inter, d->name);
 		if (d->description)
-			printf(" (%s)\n", d->description);
+			printf("(%s)\n", d->description);
 		else
-			printf(" (No description available)\n");
+			printf("(No description available)\n");
 	}
+}
 
-	if(i==0)
-	{
-		printf("\nNo interfaces found! Make sure WinPcap is installed.\n");
-		return NULL;
-	}
+pcap_t* SelectAndOpenDevice()
+{
+	/* Buffer needed in case of error while searching devices */
+	char errbuf[PCAP_ERRBUF_SIZE];
 	
-	//printf("Enter the interface number (1-%d):",i);
-	//scanf("%d", &inum);
-	inum = 1;
+	/* Temp numeric variables */
+	int	i = 0;
+	int	inum = 0;
+
+	/* Return value */
+	pcap_t	*ret_adhandle = NULL;
+	
+	printf("Enter the interface number (1-%d):", num_inter);
+	scanf("%d", &inum);
 
 	/* Check if the user specified a valid adapter */
-	if(inum < 1 || inum > i)
+	if(inum < 1 || inum > num_inter)
 	{
 		printf("\nAdapter number out of range.\n");
 		
@@ -244,9 +280,7 @@ int CompileAndSetFilter(pcap_t* adhandle)
 	}
 
 	printf("\nlistening on %s...\n", d->description);
-	
-	/* At this point, we don't need any more the device list. Free it */
-	pcap_freealldevs(alldevs);
 
 	return 0;
 }
+#endif

@@ -1,32 +1,39 @@
+#ifndef GLOBALS_H_INCLUDED
+#define GLOBALS_H_INCLUDED
+
+#include "pthread.h"
+#include "semaphore.h"
+#include "types.h"
+#include <pcap.h>
+
 /* semaphore for signalizing when packet arrives */
-static sem_t pkt_arrived;
+sem_t pkt_arrived;
 
-/* pthread for creating buffering thrread */
-static pthread_t buf_thr;
+pthread_mutex_t mtx;
+pthread_mutex_t file;
+pthread_mutex_t terminal;
 
-static pthread_mutex_t mtx;
-static sem_t pkt_start;
+/* Variables for Adapter thread */
+int num_pkts;
+int total_num_pkts;
 
-/* Variables for writing thread */
-char buf_rcv[10][DATA_SIZE];
-u_char n_block;
-u_char seq;
-u_char more_pkts;
-u_char useful_bytes;
-u_char wr_end;
+/* true when thread needs to finish */
+u_char end_thr[2];
+
+/* remembers last received sequence number in case of retransmission of packets */
+int previous_seq;
+
+/* true when last packet arrives so program can finish regulary */
+u_char last_pkt;
 
 /* variables for device list */
 pcap_if_t *alldevs;
 pcap_if_t *d;
 
-/* remembers last received sequence number in case of retransmission of packets */
-int previous_seq;
+/* file pointer */
+FILE* fd;
+	
+/* temp numeric variables */
+int num_inter; 
 
-/* signalising main when last packet arrives so program can finish regulary */
-u_char last_pkt;
-
-/* pointer to data part of received packet */
-pkt_data *pd;
-pkt_data *ack_pd;
-
-u_char* ack_pkt;
+#endif

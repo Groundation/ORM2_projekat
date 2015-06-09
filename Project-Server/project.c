@@ -1,13 +1,11 @@
+#ifndef PROJECT_C_INCLUDED
+#define PROJECT_C_INCLUDED
+
 // RT-RK
 // Osnovi Racunarskih Mreza 2
 // File name: project.c
 
-#include "types.h"
-#include "pthread.h"
-#include "semaphore.h"
-#include "global.h"
-#include "proto.h"
-#include "fun.c"
+#include "fun.h"
 
 int main()
 {	
@@ -15,91 +13,53 @@ int main()
 	/**** VARIABLES DECLARATION ****/
 	/*******************************/
 
-	/* handler of opened device */
-	pcap_t *adhandle;
-	
-	/* packet buffer */
-	u_char *pkt;
-	
-	/* temp variables needed for pcap_next_ex */
-	int res;
-	struct pcap_pkthdr *header;
-
 	/* counter for timeout */
 	int n = 0;
 
-	/* file pointer */
-	FILE* fd;
+	/* id's for threads */
+	pthread_t wifi_thr;
+	pthread_t eth_thr;
 
-
+	/*******************************/
+	/**** GLOBAL VARIABLES INIT ****/
+	/*******************************/
+	previous_seq = FIRST_SEQ - 1;
+	last_pkt = FALSE;
+	num_pkts = 0;
+	total_num_pkts = 0;
+	end_thr[0] = FALSE;
+	end_thr[1] = FALSE;
 
 	/**********************/
 	/**** MAIN PROGRAM ****/
 	/**********************/
 
-	/* init global variables */
-	previous_seq = FIRST_SEQ - 1;
-	last_pkt = FALSE;
+	fd = fopen("test_pdf.pdf", "wb");
 
-	/* NEEDED FOR WRITING THREAD */
-	/*wr_end = FALSE;
-	n_block = 0;
-	seq = 0;
-	more_pkts = 0;
-	useful_bytes = 0;
-	*/
-	/* init semaphore */
-	//sem_init(&pkt_arrived, 0, 0);
-	/* create thread Buffering*/
-	//pthread_create(&buf_thr, NULL, Writing, NULL);
-	//pthread_mutex_init(&mtx, NULL);
-	/* TODO: init sliding window */
+	pthread_mutex_init(&mtx, NULL);
+	pthread_mutex_init(&file, NULL);
+	pthread_mutex_init(&terminal, NULL);
+
+	/* Find and print all devices you see */
+	FindAllDevices();
 	
+	pthread_create(&wifi_thr, NULL, AdapterThread, (void*) 0);
+	pthread_create(&eth_thr, NULL, AdapterThread, (void*) 1);
 
-
-	/* Retrieve device list, select apropriate device and open that device */
-	if((adhandle = SelectAndOpenDevice()) == NULL)
-		return ERROR;
+	pthread_join(wifi_thr, NULL);
+	printf("zavrsio wifi thread\n");
+	pthread_join(eth_thr, NULL);
+	printf("zavrsio eth thread\n");
+	printf("zavrsio\n");
 	
-	/* Check link layer, retrieve netmask, compile and set filter */
-	if(CompileAndSetFilter(adhandle) == ERROR)
-		return ERROR;
+	pthread_mutex_destroy(&mtx);
+	pthread_mutex_destroy(&file);
+	pthread_mutex_destroy(&terminal);
 
-	/* Open file for writing */
-	fd = fopen("slika1.jpg", "wb");
-
-	/* Retrieve the packets */
-    while((res = pcap_next_ex(adhandle, &header, &pkt)) >= 0){
-        
-		if(res == 0) //read timeout
-		{
-			//printf("%d\n", n);
-			//if(++n == TMOUT)
-				//break;
-			
-			continue;
-		}
-		
-		n = 0; //reset timeout counter
-
-		/* Send ACK and write user data to file*/
-		PacketHandler(adhandle, pkt, fd);
-		
-		if(last_pkt)
-			break;
-		
-    }
-
-	//pthread_join(buf_thr, NULL);
-	printf("izasao\n");
-	
-	/* Close file */
 	fclose(fd);
-
-	printf("zatvorio\n");
-	/*destroy semaphore */
-	//sem_destroy(&pkt_arrived);
-	//pthread_mutex_destroy(&mtx);
+	pcap_freealldevs(alldevs);
 
 	return 0;
 }
+
+#endif

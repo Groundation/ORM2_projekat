@@ -11,122 +11,78 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <SccProjectName />
-    <SccLocalPath />
-    <ProjectName>Project</ProjectName>
+    <ProjectGuid>{3DF2974F-CD94-4FDE-B1C2-75C425753D14}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>project</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseOfMfc>false</UseOfMfc>
-    <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
-    <UseOfMfc>false</UseOfMfc>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="$(VCTargetsPath)Microsoft.Cpp.UpgradeFromVC60.props" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="$(VCTargetsPath)Microsoft.Cpp.UpgradeFromVC60.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>.\Debug\</OutDir>
-    <IntDir>.\Debug\</IntDir>
-    <LinkIncremental>false</LinkIncremental>
+    <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>.\Release\</OutDir>
-    <IntDir>.\Release\</IntDir>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <InlineFunctionExpansion>Default</InlineFunctionExpansion>
-      <FunctionLevelLinking>false</FunctionLevelLinking>
-      <Optimization>Disabled</Optimization>
-      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
-      <MinimalRebuild>true</MinimalRebuild>
-      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
-      <AdditionalIncludeDirectories>../;../bpf/;../lbl/;../Include/;../pthreadVC2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_DEBUG;WIN32;_CONSOLE;_MBCS;WPCAP;HAVE_REMOTE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AssemblerListingLocation>.\Debug\</AssemblerListingLocation>
-      <PrecompiledHeaderOutputFile>.\Debug\Project.pch</PrecompiledHeaderOutputFile>
-      <ObjectFileName>.\Debug\</ObjectFileName>
-      <ProgramDataBaseFileName>.\Debug\</ProgramDataBaseFileName>
-      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../Include;../pthreadVC2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
-    <Midl>
-      <TypeLibraryName>.\Debug\Project.tlb</TypeLibraryName>
-    </Midl>
-    <ResourceCompile>
-      <Culture>0x0410</Culture>
-      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ResourceCompile>
-    <Bscmake>
-      <SuppressStartupBanner>true</SuppressStartupBanner>
-      <OutputFile>.\Debug\Project.bsc</OutputFile>
-    </Bscmake>
     <Link>
-      <SuppressStartupBanner>true</SuppressStartupBanner>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
-      <OutputFile>.\Debug\Project.exe</OutputFile>
-      <AdditionalDependencies>odbc32.lib;odbccp32.lib;wsock32.lib;ws2_32.lib;Iphlpapi.lib;../Lib/wpcap.lib;../pthreadVC2/pthreadVC2.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>../pthreadVC2/pthreadVC2.lib;../Lib/wpcap.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <StringPooling>true</StringPooling>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <Optimization>MaxSpeed</Optimization>
-      <SuppressStartupBanner>true</SuppressStartupBanner>
       <WarningLevel>Level3</WarningLevel>
-      <AdditionalIncludeDirectories>../;../bpf/;../lbl/;../../Include/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>NDEBUG;WIN32;_CONSOLE;_MBCS;WPCAP;HAVE_REMOTE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AssemblerListingLocation>.\Release\</AssemblerListingLocation>
-      <PrecompiledHeaderOutputFile>.\Release\Project.pch</PrecompiledHeaderOutputFile>
-      <ObjectFileName>.\Release\</ObjectFileName>
-      <ProgramDataBaseFileName>.\Release\</ProgramDataBaseFileName>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
-    <Midl>
-      <TypeLibraryName>.\Release\Project.tlb</TypeLibraryName>
-    </Midl>
-    <ResourceCompile>
-      <Culture>0x0410</Culture>
-      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ResourceCompile>
-    <Bscmake>
-      <SuppressStartupBanner>true</SuppressStartupBanner>
-      <OutputFile>.\Release\Project.bsc</OutputFile>
-    </Bscmake>
     <Link>
-      <SuppressStartupBanner>true</SuppressStartupBanner>
       <SubSystem>Console</SubSystem>
-      <OutputFile>.\Release\Project.exe</OutputFile>
-      <AdditionalDependencies>odbc32.lib;odbccp32.lib;wsock32.lib;ws2_32.lib;Iphlpapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="fun.c" />
     <ClCompile Include="project.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\include\pcap.h" />
     <ClInclude Include="global.h" />
+    <ClInclude Include="fun.h" />
     <ClInclude Include="types.h" />
-    <ClInclude Include="proto.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
