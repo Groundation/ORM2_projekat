@@ -26,7 +26,7 @@ void FindAllDevices()
 	}
 }
 
-pcap_t* SelectAndOpenDevice()
+pcap_t* SelectAndOpenDevice(char *device)
 {
 	/* Buffer needed in case of error while searching devices */
 	char			errbuf[PCAP_ERRBUF_SIZE];
@@ -45,15 +45,14 @@ pcap_t* SelectAndOpenDevice()
 	if(inum < 1 || inum >num_inter)
 	{
 		printf("\nAdapter number out of range.\n");
-		
-		/* Free the device list */
-		pcap_freealldevs(alldevs);
 		return NULL;
 	}
 
 	/* Jump to the selected adapter */
 	for(d=alldevs, i=0; i< inum-1 ;d=d->next, i++);
 	
+	strcpy(device, d->name);
+
 	/* Open the adapter */
 	if ((ret_adhandle = pcap_open_live(d->name,	// name of the device
 							 65536,			// portion of the packet to capture. 
@@ -63,16 +62,14 @@ pcap_t* SelectAndOpenDevice()
 							 errbuf			// error buffer
 							 )) == NULL)
 	{
-		fprintf(stderr,"\nUnable to open the adapter. %s is not supported by WinPcap\n");
-		/* Free the device list */
-		pcap_freealldevs(alldevs);
+		printf("\nUnable to open the adapter.\n");
 		return NULL;
 	}
 
 	return ret_adhandle;
 }
 
-int CompileAndSetFilter(pcap_t* adhandle)
+int CompileAndSetFilter(pcap_t *adhandle)
 {
 	char packet_filter[] = "ip and udp and dst port 60030";
 	struct bpf_program fcode;

@@ -24,6 +24,7 @@ $RECYCLE.BIN/
 *.ipch
 *.cache
 *.pdf
+*.sdf
 
 # Windows shortcuts
 *.lnk

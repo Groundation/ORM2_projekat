@@ -5,7 +5,7 @@
 #include "globals.h"
 
 void FindAllDevices();
-pcap_t* SelectAndOpenDevice();
-int CompileAndSetFilter(pcap_t* adhandle);
+pcap_t* SelectAndOpenDevice(char *);
+int CompileAndSetFilter(pcap_t *adhandle);
 
 #endif /* ADAPTER_FUNCTIONS_H_INCLUDED */

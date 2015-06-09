@@ -1,3 +1,6 @@
+#ifndef PACKAGE_FUNCTIONS_C_INCLUDED
+#define PACKAGE_FUNCTIONS_C_INCLUDED
+
 #include "package_functions.h"
 
 void InitPackets(u_char *packet, mac_address_struct daddr, mac_address_struct saddr)
@@ -84,28 +87,30 @@ void SetupMacAdress()
 	wif_dmac.byte1 = 0x00;
 	wif_dmac.byte2 = 0x0e;
 	wif_dmac.byte3 = 0x8e;
-	wif_dmac.byte4 = 0x45;
-	wif_dmac.byte5 = 0xb4;
-	wif_dmac.byte6 = 0xa4;
+	wif_dmac.byte4 = 0x44;
+	wif_dmac.byte5 = 0xa8;
+	wif_dmac.byte6 = 0x0b;
 	/* wifi source address */
 	wif_smac.byte1 = 0x00;
 	wif_smac.byte2 = 0x0e;
 	wif_smac.byte3 = 0x8e;
 	wif_smac.byte4 = 0x61;
-	wif_smac.byte5 = 0x8d;
-	wif_smac.byte6 = 0x6e;
+	wif_smac.byte5 = 0xbb;
+	wif_smac.byte6 = 0x7b;
 	/* Ethernet destination address*/
-	eth_dmac.byte1 = 0xa0;
-	eth_dmac.byte2 = 0x48;
-	eth_dmac.byte3 = 0x1c;
-	eth_dmac.byte4 = 0x8a;
-	eth_dmac.byte5 = 0x1e;
-	eth_dmac.byte6 = 0xee;
+	eth_dmac.byte1 = 0x00;
+	eth_dmac.byte2 = 0x19;
+	eth_dmac.byte3 = 0x99;
+	eth_dmac.byte4 = 0xd3;
+	eth_dmac.byte5 = 0x94;
+	eth_dmac.byte6 = 0xa0;
 	/* Ethernet source address */
-	eth_smac.byte1 = 0xa0;
-	eth_smac.byte2 = 0x48;
-	eth_smac.byte3 = 0x1c;
-	eth_smac.byte4 = 0x8c;
-	eth_smac.byte5 = 0x1e;
-	eth_smac.byte6 = 0x96;
+	eth_smac.byte1 = 0x00;
+	eth_smac.byte2 = 0x19;
+	eth_smac.byte3 = 0x99;
+	eth_smac.byte4 = 0xd2;
+	eth_smac.byte5 = 0xb3;
+	eth_smac.byte6 = 0x8f;
 }
+
+#endif /* PACKAGE_FUNCTIONS_C_INCLUDED */

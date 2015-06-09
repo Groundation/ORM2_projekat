@@ -8,7 +8,10 @@
 #include "adapter_functions.h"
 #include "windows.h"
 
-void *WifThread(void *param)
+#define WIF_THREAD 0
+#define ETH_THREAD 1
+
+void *Thread(void *param)
 {
 	pcap_t			*adhandle;
 
@@ -21,39 +24,45 @@ void *WifThread(void *param)
 	int mili_sec			= 0;
 	int num_retrans			= 0;
 	
+	u_char *buffer			= NULL;
+
 	u_char data[DATA_SIZE];
 	u_char *pkt_data;
 
+	char device[51];
+
+	u_char id = (u_char) param;
+
 	pthread_mutex_lock(&term_mutx);
-	printf("Wifi ");
-	adhandle = SelectAndOpenDevice();
+	if(id == ETH_THREAD)
+	{
+		printf("Ethernet ");
+		buffer = eth_buffer;
+	} else //id == WIF_THREAD
+	{
+		printf("Wifi ");
+		buffer = wif_buffer;
+	}
+	adhandle = SelectAndOpenDevice(device);
 	CompileAndSetFilter(adhandle);
 	pthread_mutex_unlock(&term_mutx);
 
-	sem_post(&eth_init);
-	sem_wait(&wif_init);
+	if(id == ETH_THREAD)
+	{
+		sem_post(&wif_init);
+		sem_wait(&eth_init);
+	} else //id == WIF_THREAD
+	{
+		sem_post(&eth_init);
+		sem_wait(&wif_init);
+	}
+	
 
 	while(1)
 	{	
-		/*pthread_mutex_lock(&file_mutx);
-		if(last_pkt)
-		{
-			pthread_mutex_unlock(&file_mutx);
+		if(FillPacket(buffer, &ex_ack) == 1)
 			break;
-		}
-		num_of_read_bytes = fread(data, 1, DATA_SIZE, file_ptr);
-		if(num_of_read_bytes < DATA_SIZE)
-		{
-			seq = -seq;
-			last_pkt = 1;
-		}
-		PrepareData(wif_buffer, data, seq, num_of_read_bytes);
-		printf("\nWifSeq: %d\n", seq);
-		ex_ack = ++seq;
-		pthread_mutex_unlock(&file_mutx);*/
-		if(FillPacket(wif_buffer, &ex_ack) == 1)
-			break;
-		if (pcap_sendpacket(adhandle, wif_buffer, TOT_LEN) != 0)
+		if (pcap_sendpacket(adhandle, buffer, TOT_LEN) != 0)
 		{
 			fprintf(stderr,"\nError sending the packet: %s\n", pcap_geterr(adhandle));
 			return;
@@ -61,100 +70,11 @@ void *WifThread(void *param)
 		/* Retrieve the packets */
 		while((timeout = pcap_next_ex(adhandle, &header, &pkt_data)) >= 0)
 		{
-			
 			if(timeout == 0)
 			{
-				/*if(mili_sec == 400*num_retrans)
+				if(mili_sec == 500*(num_retrans+1))
 				{
 					pcap_sendpacket(adhandle, buffer, TOT_LEN);
-					printf("Retransmission...\n");
-					mili_sec = 0;
-					if(num_retrans == (5-1))
-					{
-						printf("\nShutdown!\n");
-						return 1;
-					} else
-					{
-						num_retrans++;
-					}
-				} else
-				{
-					mili_sec++;
-				}*/
-			} else
-			{
-				pd_ptr = (pkt_data_struct*) (pkt_data + TOT_LEN - DAT_LEN);
-				//printf("Dobio je ack: %d, a treba: %d.", pd_ptr -> ack, ex_ack);
-				if(pd_ptr -> ack == ex_ack)
-				{
-					mili_sec = 0;
-					num_retrans = 0;
-					break;
-				}
-			}
-		}
-	}
-}
-
-void *EthThread(void *param)
-{
-	pcap_t			*adhandle;
-
-	pkt_data_struct *pd_ptr;
-
-	struct pcap_pkthdr *header;
-
-	int ex_ack				= 0;
-	int timeout				= 0;
-	int mili_sec			= 0;
-	int num_retrans			= 0;
-	
-	u_char data[DATA_SIZE];
-	u_char *pkt_data;
-
-	pthread_mutex_lock(&term_mutx);
-	printf("Ethernet ");
-	adhandle = SelectAndOpenDevice();
-	CompileAndSetFilter(adhandle);
-	pthread_mutex_unlock(&term_mutx);
-
-	sem_post(&wif_init);
-	sem_wait(&eth_init);
-
-	while(1)
-	{	
-		/*pthread_mutex_lock(&file_mutx);
-		if(last_pkt)
-		{
-			pthread_mutex_unlock(&file_mutx);
-			break;
-		}
-		num_of_read_bytes = fread(data, 1, DATA_SIZE, file_ptr);
-		if(num_of_read_bytes < DATA_SIZE)
-		{
-			seq = -seq;
-			last_pkt = 1;
-		}
-		PrepareData(eth_buffer, data, seq, num_of_read_bytes);
-		printf("\nEthSeq: %d\n", seq);
-		ex_ack = ++seq;
-		pthread_mutex_unlock(&file_mutx);*/
-		if(FillPacket(eth_buffer, &ex_ack) == 1)
-			break;
-		if (pcap_sendpacket(adhandle, eth_buffer, TOT_LEN) != 0)
-		{
-			fprintf(stderr,"\nError sending the packet: %s\n", pcap_geterr(adhandle));
-			return;
-		}
-		/* Retrieve the packets */
-		while((timeout = pcap_next_ex(adhandle, &header, &pkt_data)) >= 0)
-		{
-			
-			if(timeout == 0)
-			{
-				if(mili_sec == 1000*num_retrans)
-				{
-					pcap_sendpacket(adhandle, eth_buffer, TOT_LEN);
 					printf("Retransmission...\n");
 					mili_sec = 0;
 					if(num_retrans == 3)
@@ -201,15 +121,15 @@ int main()
 	sem_init(&eth_init, 0, 0);
 	sem_init(&wif_init, 0, 0);
 
-	file_ptr = fopen("test.pdf","rb");
+	file_ptr = fopen("slika.jpg","rb");
 	if (!file_ptr)
 	{
 		printf("Unable to open file!");
 		return 1;
 	}
 	
-	pthread_create(&wif_thread, NULL, WifThread, 0);
-	pthread_create(&eth_thread, NULL, EthThread, 0);
+	pthread_create(&wif_thread, NULL, Thread, (void*) 0);
+	pthread_create(&eth_thread, NULL, Thread, (void*) 1);
 
 	pthread_join(eth_thread, NULL);
 	pthread_join(wif_thread, NULL);
