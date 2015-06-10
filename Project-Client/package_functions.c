@@ -87,16 +87,16 @@ void SetupMacAdress()
 	wif_dmac.byte1 = 0x00;
 	wif_dmac.byte2 = 0x0e;
 	wif_dmac.byte3 = 0x8e;
-	wif_dmac.byte4 = 0x44;
-	wif_dmac.byte5 = 0xa8;
-	wif_dmac.byte6 = 0x0b;
+	wif_dmac.byte4 = 0x61;
+	wif_dmac.byte5 = 0xbb;
+	wif_dmac.byte6 = 0x7b;
 	/* wifi source address */
 	wif_smac.byte1 = 0x00;
 	wif_smac.byte2 = 0x0e;
 	wif_smac.byte3 = 0x8e;
-	wif_smac.byte4 = 0x61;
-	wif_smac.byte5 = 0xbb;
-	wif_smac.byte6 = 0x7b;
+	wif_smac.byte4 = 0x45;
+	wif_smac.byte5 = 0xb4;
+	wif_smac.byte6 = 0xa4;
 	/* Ethernet destination address*/
 	eth_dmac.byte1 = 0x00;
 	eth_dmac.byte2 = 0x19;

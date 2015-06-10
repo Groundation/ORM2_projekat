@@ -26,7 +26,34 @@ void FindAllDevices()
 	}
 }
 
-pcap_t* SelectAndOpenDevice(char *device)
+pcap_t* OpenDevice(char *device)
+{
+	/* Buffer needed in case of error while searching devices */
+	char			errbuf[PCAP_ERRBUF_SIZE];
+
+	/* Return value */
+	pcap_t			*ret_adhandle	= NULL;
+
+	/* Open the adapter */
+	if ((ret_adhandle = pcap_open_live(device,	// name of the device
+							 65536,				// portion of the packet to capture. 
+												// 65536 grants that the whole packet will be captured on all the MACs.
+							 1,					// promiscuous mode (nonzero means promiscuous)
+							 1,					// read timeout
+							 errbuf				// error buffer
+							 )) == NULL)
+	{
+		printf("\nUnable to open the adapter. Error: %s\n", errbuf);
+		return NULL;
+	} else
+	{
+		printf("\nUSPEO SAM.\n");
+	}
+
+	return ret_adhandle;
+}
+
+pcap_t* SelectAndOpenDevice(u_char opt, char *device, u_int *netmask)
 {
 	/* Buffer needed in case of error while searching devices */
 	char			errbuf[PCAP_ERRBUF_SIZE];
@@ -50,26 +77,35 @@ pcap_t* SelectAndOpenDevice(char *device)
 
 	/* Jump to the selected adapter */
 	for(d=alldevs, i=0; i< inum-1 ;d=d->next, i++);
-	
-	strcpy(device, d->name);
 
 	/* Open the adapter */
 	if ((ret_adhandle = pcap_open_live(d->name,	// name of the device
-							 65536,			// portion of the packet to capture. 
-											// 65536 grants that the whole packet will be captured on all the MACs.
-							 1,				// promiscuous mode (nonzero means promiscuous)
-							 1,				// read timeout
-							 errbuf			// error buffer
+							 65536,				// portion of the packet to capture. 
+												// 65536 grants that the whole packet will be captured on all the MACs.
+							 1,					// promiscuous mode (nonzero means promiscuous)
+							 1,					// read timeout
+							 errbuf				// error buffer
 							 )) == NULL)
 	{
 		printf("\nUnable to open the adapter.\n");
 		return NULL;
 	}
 
+	if(opt)
+	{
+		strcpy(device, d->name);
+		if(d->addresses != NULL)
+			/* Retrieve the mask of the first address of the interface */
+			*netmask = ((struct sockaddr_in *)(d->addresses->netmask))->sin_addr.S_un.S_addr;
+		else
+			/* If the interface is without addresses we suppose to be in a C class network */
+			*netmask = 0xffffff; 
+	}
+
 	return ret_adhandle;
 }
 
-int CompileAndSetFilter(pcap_t *adhandle)
+int CompileAndSetFilter(pcap_t *adhandle, u_char opt, u_int netmask_in)
 {
 	char packet_filter[] = "ip and udp and dst port 60030";
 	struct bpf_program fcode;
@@ -85,12 +121,18 @@ int CompileAndSetFilter(pcap_t *adhandle)
 		return ERROR;
 	}
 	
-	if(d->addresses != NULL)
-		/* Retrieve the mask of the first address of the interface */
-		netmask=((struct sockaddr_in *)(d->addresses->netmask))->sin_addr.S_un.S_addr;
-	else
-		/* If the interface is without addresses we suppose to be in a C class network */
-		netmask=0xffffff; 
+	if(opt)
+	{
+		netmask = netmask_in;
+	} else
+	{
+		if(d->addresses != NULL)
+			/* Retrieve the mask of the first address of the interface */
+			netmask = ((struct sockaddr_in *)(d->addresses->netmask))->sin_addr.S_un.S_addr;
+		else
+			/* If the interface is without addresses we suppose to be in a C class network */
+			netmask = 0xffffff;
+	}
 
 	//compile the filter
 	if (pcap_compile(adhandle, &fcode, packet_filter, 1, netmask) < 0)

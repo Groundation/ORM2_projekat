@@ -29,7 +29,10 @@ void *Thread(void *param)
 	u_char data[DATA_SIZE];
 	u_char *pkt_data;
 
+	u_char disconnect		= 0;
+
 	char device[51];
+	u_int netmask;
 
 	u_char id = (u_char) param;
 
@@ -43,14 +46,15 @@ void *Thread(void *param)
 		printf("Wifi ");
 		buffer = wif_buffer;
 	}
-	adhandle = SelectAndOpenDevice(device);
-	CompileAndSetFilter(adhandle);
+	adhandle = SelectAndOpenDevice(1, device, &netmask);
+	CompileAndSetFilter(adhandle, 1, netmask);
 	pthread_mutex_unlock(&term_mutx);
 
 	if(id == ETH_THREAD)
 	{
 		sem_post(&wif_init);
 		sem_wait(&eth_init);
+
 	} else //id == WIF_THREAD
 	{
 		sem_post(&eth_init);
@@ -60,19 +64,53 @@ void *Thread(void *param)
 
 	while(1)
 	{	
+		/*while(disconnect)
+		{
+			Sleep(1000);
+			if((adhandle = OpenDevice(device)) != NULL)
+			{
+				CompileAndSetFilter(adhandle, 1, netmask);
+				disconnect = 0;
+			}
+		}*/
 		if(FillPacket(buffer, &ex_ack) == 1)
 			break;
 		if (pcap_sendpacket(adhandle, buffer, TOT_LEN) != 0)
 		{
-			fprintf(stderr,"\nError sending the packet: %s\n", pcap_geterr(adhandle));
-			return;
+			//fprintf(stderr,"\nError sending the packet: %s\n", pcap_geterr(adhandle));
+			disconnect = 1;
+			printf("Prekinuta konekcija!");
+			while(disconnect)
+			{
+				Sleep(1000);
+				if((adhandle = OpenDevice(device)) != NULL)
+				{
+					CompileAndSetFilter(adhandle, 1, netmask);
+					disconnect = 0;
+				}
+			}
 		}
 		/* Retrieve the packets */
-		while((timeout = pcap_next_ex(adhandle, &header, &pkt_data)) >= 0)
+		while(1)
 		{
+			timeout = pcap_next_ex(adhandle, &header, &pkt_data);
+			if(timeout < 0)
+			{
+				disconnect = 1;
+				printf("Prekinuta konekcija!");
+				while(disconnect)
+				{
+					Sleep(1000);
+					if((adhandle = OpenDevice(device)) != NULL)
+					{
+						CompileAndSetFilter(adhandle, 1, netmask);
+						disconnect = 0;
+					}
+				}
+			}
 			if(timeout == 0)
 			{
-				if(mili_sec == 500*(num_retrans+1))
+				if(mili_sec == 10*(num_retrans+1))
 				{
 					pcap_sendpacket(adhandle, buffer, TOT_LEN);
 					printf("Retransmission...\n");
@@ -88,7 +126,8 @@ void *Thread(void *param)
 				{
 					mili_sec++;
 				}
-			} else
+			}
+			if(timeout > 0)
 			{
 				pd_ptr = (pkt_data_struct*) (pkt_data + TOT_LEN - DAT_LEN);
 				//printf("Dobio je ack: %d, a treba: %d.", pd_ptr -> ack, ex_ack);
@@ -121,7 +160,7 @@ int main()
 	sem_init(&eth_init, 0, 0);
 	sem_init(&wif_init, 0, 0);
 
-	file_ptr = fopen("slika.jpg","rb");
+	file_ptr = fopen("slika3.jpg","rb");
 	if (!file_ptr)
 	{
 		printf("Unable to open file!");
