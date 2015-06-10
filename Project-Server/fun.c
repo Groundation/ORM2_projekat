@@ -6,6 +6,10 @@
 
 void* AdapterThread(void* param)
 {
+	/*******************************/
+	/**** VARIABLES DECLARATION ****/
+	/*******************************/
+	
 	/* temp variables needed for pcap_next_ex */
 	int res;
 	struct pcap_pkthdr* header;
@@ -15,58 +19,86 @@ void* AdapterThread(void* param)
 
 	/* packet buffer */
 	u_char* pkt;
-	u_char ack_pkt[TOT_LEN - DAT_LEN + 4];
+	u_char ack_pkt[ACK_PKT_SIZE];	//TOT_LEN - DAT_LEN + 4 because ACK packet won't send unessesary bytest (seq_num and data) 
 
 	/* true only before first packet arrives so we can init ACK packet */
 	u_char first_pkt = TRUE;
+	
+	/* true when wifi adapter get closed during transmissions */
+	u_char connection_error = FALSE;
 
+	/* needed in case of error while searching devices */
+	char errbuf[PCAP_ERRBUF_SIZE];
+
+	/* id of thread */
+	u_char id = (u_char) param;
+
+	/* measuring time */
 	DWORD start, end;
 
-	int i = (int) param;
+	/**************************/
+	/**** FUNCTION PROGRAM ****/
+	/**************************/
 
 	pthread_mutex_lock(&mtx);
-	adhandle = SelectAndOpenDevice();
-	if(CompileAndSetFilter(adhandle) == ERROR)
+	adhandle = SelectAndOpenDevice(id);
+	if(CompileAndSetFilter(adhandle, id) == ERROR)
 		printf("Error setting filter\n");
 	pthread_mutex_unlock(&mtx);
 	
 	start = GetTickCount(); 
 
 	/* Retrieve the packets */
-    while((res = pcap_next_ex(adhandle, &header, &pkt)) >= 0)
+    while(1)
 	{
+		res = pcap_next_ex(adhandle, &header, &pkt);
+		
 		if(res == 0) //read timeout
 		{
-			//if(++n == TMOUT)
-				//break;
 			if((last_pkt && (num_pkts >= total_num_pkts)))
 					break;	
-			
-			//printf("timeout, id: %d\n", i);
 			continue;
 		}
-		//n = 0; //reset timeout counter
+		else if(res < 0)
+		{
+			while((adhandle = pcap_open_live(device_name[id],	// name of the device
+							65536,			// portion of the packet to capture. 
+											// 65536 grants that the whole packet will be captured on all the MACs.
+							1,				// promiscuous mode (nonzero means promiscuous)
+							1,				// read timeout
+							errbuf			// error buffer
+							)) == NULL)
+			{
+				printf("\nd-name: %s\nNEXT EX ERROR Unable to open the adapter. %s\n", device_name[id], errbuf);
+				Sleep(2000);
+			}
+
+			CompileAndSetFilter(adhandle, id);
+		}
 
 		/* Send ACK and write user data to file*/
-		PacketHandler(adhandle, pkt, ack_pkt, first_pkt, i);
+		PacketHandler(adhandle, pkt, ack_pkt, first_pkt, connection_error, id);
 		
-		if(end_thr[i] || (last_pkt && (num_pkts >= total_num_pkts)))
+		if(end_thr[id] || (last_pkt && (num_pkts >= total_num_pkts)))
 			break;	
     }
 
 	end = GetTickCount();
 
 	pthread_mutex_lock(&terminal);
-	printf("running time: %d msec\n, thread: %d\n", (end - start), i);
+	printf("running time: %d msec\n, thread: %d\n", (end - start), id);
 	pthread_mutex_unlock(&terminal);
 	
 	return 0;
 }
 
 /* function called for every incoming packet */
-void PacketHandler(pcap_t* adhandle, u_char *pkt, u_char *ack_pkt, u_char first_pkt, int id)
+void PacketHandler(pcap_t* adhandle, u_char *pkt, u_char *ack_pkt, u_char first_pkt, u_char connection_error, u_char id)
 {
 	int current_ack = 0;
+
+	/* Buffer needed in case of error while searching devices */
+	char errbuf[PCAP_ERRBUF_SIZE];
 
 	eth_header* eh;
 	ip_header* ih;
@@ -91,7 +123,6 @@ void PacketHandler(pcap_t* adhandle, u_char *pkt, u_char *ack_pkt, u_char first_
 		current_ack = pd->ack;
 	
 	/* PREPARE PACKET FOR SENDING ACK */
-
 	if(first_pkt)
 	{
 		first_pkt = FALSE;
@@ -134,6 +165,7 @@ void PacketHandler(pcap_t* adhandle, u_char *pkt, u_char *ack_pkt, u_char first_
 	if(pcap_sendpacket(adhandle, ack_pkt, TOT_LEN - DAT_LEN + 4) != 0)
 	{
 		fprintf(stderr, "\nError sending ACK packet: %s\n", pcap_geterr(adhandle));
+		connection_error = TRUE;
 	}
 
 	/* WRITE USER DATA TO FILE */
@@ -157,13 +189,31 @@ void PacketHandler(pcap_t* adhandle, u_char *pkt, u_char *ack_pkt, u_char first_
 		pthread_mutex_unlock(&mtx);
 	}
 
-	previous_seq = pd->seq;
+	if(connection_error)
+	{
+		connection_error = FALSE;
+
+		while((adhandle = pcap_open_live(device_name[id],	// name of the device
+							65536,			// portion of the packet to capture. 
+											// 65536 grants that the whole packet will be captured on all the MACs.
+							1,				// promiscuous mode (nonzero means promiscuous)
+							1,				// read timeout
+							errbuf			// error buffer
+							)) == NULL)
+		{
+			printf("\nd-name: %s\nNEXT EX ERROR Unable to open the adapter. %s\n", device_name[id], errbuf);
+			Sleep(2000);
+		}
+
+		CompileAndSetFilter(adhandle, id);
+	}
 }
 
-void FindAllDevices()
+void FindAndPrintAllDevices()
 {
 	/* Buffer needed in case of error while searching devices */
 	char errbuf[PCAP_ERRBUF_SIZE];
+	pcap_if_t *d_print;
 
 	/* Retrieve the device list */
 	if(pcap_findalldevs(&alldevs, errbuf) == ERROR)
@@ -173,17 +223,17 @@ void FindAllDevices()
 	}
 
 	/* Print the list */
-	for(d=alldevs; d; d=d->next)
+	for(d_print = alldevs; d_print; d_print = d_print->next)
 	{
-		printf("%d. %s", ++num_inter, d->name);
-		if (d->description)
-			printf("(%s)\n", d->description);
+		printf("%d. %s", ++num_inter, d_print->name);
+		if (d_print->description)
+			printf("(%s)\n", d_print->description);
 		else
 			printf("(No description available)\n");
 	}
 }
 
-pcap_t* SelectAndOpenDevice()
+pcap_t* SelectAndOpenDevice(u_char id)
 {
 	/* Buffer needed in case of error while searching devices */
 	char errbuf[PCAP_ERRBUF_SIZE];
@@ -209,10 +259,10 @@ pcap_t* SelectAndOpenDevice()
 	}
 
 	/* Jump to the selected adapter */
-	for(d=alldevs, i=0; i< inum-1 ;d=d->next, i++);
+	for(d[id] = alldevs, i=0; i < inum - 1; d[id] = d[id]->next, i++);
 	
 	/* Open the adapter */
-	if ((ret_adhandle = pcap_open_live(d->name,	// name of the device
+	if ((ret_adhandle = pcap_open_live(d[id]->name,	// name of the device
 							 65536,			// portion of the packet to capture. 
 											// 65536 grants that the whole packet will be captured on all the MACs.
 							 1,				// promiscuous mode (nonzero means promiscuous)
@@ -226,15 +276,23 @@ pcap_t* SelectAndOpenDevice()
 		return NULL;
 	}
 
+	if(d[id]->addresses != NULL)
+		/* Retrieve the mask of the first address of the interface */
+		netmask[id]=((struct sockaddr_in *)(d[id]->addresses->netmask))->sin_addr.S_un.S_addr;
+	else
+		/* If the interface is without addresses we suppose to be in a C class network */
+		netmask[id]=0xffffff; 
+
+	strcpy(device_name[id], d[id]->name);
+
 	return ret_adhandle;
 }
 
-int CompileAndSetFilter(pcap_t* adhandle)
+int CompileAndSetFilter(pcap_t* adhandle, u_char id)
 {
 	char packet_filter[] = "ip and udp and dst port 50030";
 	struct bpf_program fcode;
 	struct pcap_pkthdr *header;
-	u_int netmask;
 	
 	/* Check the link layer. We support only Ethernet for simplicity. */
 	if(pcap_datalink(adhandle) != DLT_EN10MB)
@@ -244,16 +302,9 @@ int CompileAndSetFilter(pcap_t* adhandle)
 		pcap_freealldevs(alldevs);
 		return ERROR;
 	}
-	
-	if(d->addresses != NULL)
-		/* Retrieve the mask of the first address of the interface */
-		netmask=((struct sockaddr_in *)(d->addresses->netmask))->sin_addr.S_un.S_addr;
-	else
-		/* If the interface is without addresses we suppose to be in a C class network */
-		netmask=0xffffff; 
 
 	//compile the filter
-	if (pcap_compile(adhandle, &fcode, packet_filter, 1, netmask) < 0)
+	if (pcap_compile(adhandle, &fcode, packet_filter, 1, netmask[id]) < 0)
 	{
 		fprintf(stderr,"\nUnable to compile the packet filter. Check the syntax.\n");
 		/* Free the device list */
@@ -262,7 +313,7 @@ int CompileAndSetFilter(pcap_t* adhandle)
 	}
 	
 	//compile the filter
-	if (pcap_compile(adhandle, &fcode, packet_filter, 1, netmask) < 0)
+	if (pcap_compile(adhandle, &fcode, packet_filter, 1, netmask[id]) < 0)
 	{
 		fprintf(stderr,"\nUnable to compile the packet filter. Check the syntax.\n");
 		/* Free the device list */
@@ -278,8 +329,6 @@ int CompileAndSetFilter(pcap_t* adhandle)
 		pcap_freealldevs(alldevs);
 		return ERROR;
 	}
-
-	printf("\nlistening on %s...\n", d->description);
 
 	return 0;
 }

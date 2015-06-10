@@ -28,7 +28,10 @@ u_char last_pkt;
 
 /* variables for device list */
 pcap_if_t *alldevs;
-pcap_if_t *d;
+pcap_if_t *d[2];
+
+char device_name[2][60];
+u_int netmask[2];
 
 /* file pointer */
 FILE* fd;

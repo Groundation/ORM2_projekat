@@ -10,18 +10,16 @@
 #define UDP_LEN sizeof(udp_header)
 #define DAT_LEN sizeof(pkt_data)
 #define TOT_LEN ETH_LEN + IP_LEN + UDP_LEN + DAT_LEN
+#define ACK_PKT_SIZE TOT_LEN - DAT_LEN + 4
 
-#define FIRST_SEQ 0
-#define LAST_SEQ -1
+#define ETH_ID	1
+#define	WIFI_ID 0
 
 #define TRUE 1
 #define FALSE 0
 
-#define MAC_ADDR_BYTES_NUM 6
-#define SWS 4 //sliding window size
-
-#define TMOUT 1500
 #define ERROR -1
+#define FIRST_SEQ 0
 
 /* Packet header and data */
 typedef struct pkt_data
@@ -83,10 +81,14 @@ typedef struct eth_header
 	u_char eth_type[2];	// Ethernet type
 }eth_header;
 
-/* Sliding window */
-typedef struct sld_window
+/* Packet handler struct */
+typedef struct pkt_handler
 {
-	u_char left;
-	u_char right;
-}sld_window;
+	pcap_t *adhandle;
+	u_char *pkt;
+	u_char *ack_pkt; 
+	u_char first_pkt;
+	int id;
+	u_char error_connection;
+}pkt_handler;
 #endif
