@@ -123,12 +123,14 @@
     <ClCompile Include="adapter_functions.c" />
     <ClCompile Include="package_functions.c" />
     <ClCompile Include="project.c" />
+    <ClCompile Include="thread_functions.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="adapter_functions.h" />
     <ClInclude Include="globals.h" />
     <ClInclude Include="orm_types.h" />
     <ClInclude Include="package_functions.h" />
+    <ClInclude Include="thread_functions.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -43,7 +43,6 @@ pcap_t* OpenDevice(char *device)
 							 errbuf				// error buffer
 							 )) == NULL)
 	{
-		printf("\nUnable to open the adapter. Error: %s\n", errbuf);
 		return NULL;
 	} else
 	{

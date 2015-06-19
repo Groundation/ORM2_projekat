@@ -7,7 +7,8 @@
 
 void InitPackets(u_char *, mac_address_struct, mac_address_struct);
 void PrepareData(u_char *, u_char *, int, int);
-int FillPacket(u_char *, int *);
+void TransferData(u_char, u_char);
+int FillPacket(int);
 void SetupMacAdress();
 
 #endif /* PACKAGE_FUNCTIONS_H_INCLUDED */

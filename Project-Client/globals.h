@@ -1,9 +1,14 @@
 #ifndef GLOBALS_H_INCLUDED
 #define GLOBALS_H_INCLUDED
 
+#define WIF_THREAD 0
+#define ETH_THREAD 1
+
 #include "orm_types.h"
 #include "pthread.h"
 #include "semaphore.h"
+
+#define NUM_OF_THREADS 2
 
 FILE			*file_ptr;
 
@@ -20,11 +25,13 @@ mac_address_struct	eth_dmac;
 mac_address_struct	wif_smac;
 mac_address_struct	wif_dmac;
 
-u_char wif_buffer[TOT_LEN];
-u_char eth_buffer[TOT_LEN];
+u_char main_buffer[NUM_OF_THREADS][TOT_LEN];
+u_char write_ready[NUM_OF_THREADS];
+int ack_to_receive[NUM_OF_THREADS];
+u_char thread_error[NUM_OF_THREADS];
 
 pthread_mutex_t term_mutx;
-pthread_mutex_t file_mutx;
+pthread_mutex_t read_mutx[NUM_OF_THREADS];
 
 sem_t			eth_init;
 sem_t			wif_init;

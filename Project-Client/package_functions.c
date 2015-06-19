@@ -57,27 +57,35 @@ void PrepareData(u_char *packet, u_char *data, int seq, int bytes)
 	memcpy(pd_ptr->data, data,	DATA_SIZE);
 }
 
-int FillPacket(u_char *buffer,int *ex_ack)
+void TransferData(u_char src, u_char dst)
+{
+	pkt_data_struct	*pd_src;
+	pkt_data_struct	*pd_dst;
+
+	pd_src	= (pkt_data_struct*) (main_buffer[src] + TOT_LEN - DAT_LEN);
+	pd_dst	= (pkt_data_struct*) (main_buffer[dst] + TOT_LEN - DAT_LEN);
+
+	memcpy(pd_dst, pd_src,	DAT_LEN);
+
+	ack_to_receive[dst] = ack_to_receive[src];
+}
+
+int FillPacket(int id)
 {
 	u_char data[DATA_SIZE];
 	int num_of_read_bytes	= 0;
 
-	pthread_mutex_lock(&file_mutx);
-	if(last_pkt)
-	{
-		pthread_mutex_unlock(&file_mutx);
-		return 1;
-	}
 	num_of_read_bytes = fread(data, 1, DATA_SIZE, file_ptr);
 	if(num_of_read_bytes < DATA_SIZE)
 	{
 		seq = -seq;
 		last_pkt = 1;
+		PrepareData(main_buffer[id], data, seq, num_of_read_bytes);
+		ack_to_receive[id] = ++seq;
+		return 1;
 	}
-	PrepareData(buffer, data, seq, num_of_read_bytes);
-	printf("\nSeq: %d\n", seq);
-	*ex_ack = ++seq;
-	pthread_mutex_unlock(&file_mutx);
+	PrepareData(main_buffer[id], data, seq, num_of_read_bytes);
+	ack_to_receive[id] = ++seq;
 	return 0;
 }
 
@@ -87,16 +95,16 @@ void SetupMacAdress()
 	wif_dmac.byte1 = 0x00;
 	wif_dmac.byte2 = 0x0e;
 	wif_dmac.byte3 = 0x8e;
-	wif_dmac.byte4 = 0x61;
-	wif_dmac.byte5 = 0xbb;
-	wif_dmac.byte6 = 0x7b;
+	wif_dmac.byte4 = 0x45;
+	wif_dmac.byte5 = 0xb4;
+	wif_dmac.byte6 = 0xa4;
 	/* wifi source address */
 	wif_smac.byte1 = 0x00;
 	wif_smac.byte2 = 0x0e;
 	wif_smac.byte3 = 0x8e;
 	wif_smac.byte4 = 0x45;
 	wif_smac.byte5 = 0xb4;
-	wif_smac.byte6 = 0xa4;
+	wif_smac.byte6 = 0x56;
 	/* Ethernet destination address*/
 	eth_dmac.byte1 = 0x00;
 	eth_dmac.byte2 = 0x19;

@@ -24,6 +24,9 @@
     <ClCompile Include="adapter_functions.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="thread_functions.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="orm_types.h">
@@ -36,6 +39,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="globals.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="thread_functions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
